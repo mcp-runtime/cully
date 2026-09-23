@@ -10,7 +10,7 @@ import sqlite3
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_QUESTIONS = ROOT / "questions.json"
 DEFAULT_MEMORY = ROOT / "memory" / "buddy_memory.db"
 LAUNCHD_DIR = Path.home() / "Library" / "LaunchAgents"
+IST = timezone(timedelta(hours=5, minutes=30), name="IST")
 
 
 @dataclass(frozen=True)
@@ -28,13 +29,21 @@ class Prompt:
     category: str
 
 
-def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+def ist_now() -> str:
+    return datetime.now(IST).isoformat(timespec="seconds")
+
+
+def display_timestamp(value: str) -> str:
+    """Render event timestamps in IST; legacy naive values are interpreted as UTC."""
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(IST).isoformat(timespec="seconds")
 
 
 def parse_timestamp(value: str | None) -> str:
     if not value:
-        return utc_now()
+        return ist_now()
     try:
         parsed = datetime.fromisoformat(value)
     except ValueError as exc:
@@ -42,8 +51,8 @@ def parse_timestamp(value: str | None) -> str:
             "Use ISO time for --at, like 2026-07-20T06:00:00+05:30"
         ) from exc
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.isoformat(timespec="seconds")
+        parsed = parsed.replace(tzinfo=IST)
+    return parsed.astimezone(IST).isoformat(timespec="seconds")
 
 
 def load_questions(path: Path, mode: str) -> list[Prompt]:
@@ -171,13 +180,13 @@ def row_to_event(row: sqlite3.Row) -> dict[str, Any]:
         return {
             "type": "checkin",
             "mode": row["mode"] or "checkin",
-            "timestamp": row["timestamp"],
+            "timestamp": display_timestamp(row["timestamp"]),
             "answers": {key: row["text"]},
         }
     return {
         "type": "log",
         "category": row["category"],
-        "timestamp": row["timestamp"],
+        "timestamp": display_timestamp(row["timestamp"]),
         "text": row["text"],
         "payload": json.loads(row["payload_json"] or "{}"),
     }
@@ -194,7 +203,11 @@ def read_sqlite_events(memory_path: Path) -> list[dict[str, Any]]:
             ORDER BY timestamp, id
             """
         ).fetchall()
-    return [row_to_event(row) for row in rows]
+    events = [row_to_event(row) for row in rows]
+    events.sort(
+        key=lambda event: datetime.fromisoformat(event["timestamp"]).astimezone(timezone.utc)
+    )
+    return events
 
 
 def ask(args: argparse.Namespace) -> None:
@@ -215,7 +228,7 @@ def ask(args: argparse.Namespace) -> None:
         {
             "type": "checkin",
             "mode": args.mode,
-            "timestamp": utc_now(),
+            "timestamp": ist_now(),
             "answers": answers,
         },
     )

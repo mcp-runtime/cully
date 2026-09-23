@@ -3,7 +3,7 @@ import unittest
 
 os.environ.setdefault("BUDDY_DATABASE_URL", "postgresql://buddy:unused@localhost:5432/buddy")
 
-from buddy_service import EMBEDDING_DIM, checked_embedding, checked_text, normalize_project_url
+from buddy_mcp.validation import EMBEDDING_DIM, checked_embedding, checked_text, normalize_project_url
 
 
 class ServiceValidationTests(unittest.TestCase):

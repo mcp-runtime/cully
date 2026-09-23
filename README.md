@@ -14,6 +14,16 @@ Buddy uses PostgreSQL with full-text search and pgvector. The service exposes
 URLs as project keys and `mcp` as the theme. Each entry can retain the assistant,
 summary, approach, outcome, issue, learning, next steps, and tags.
 
+Entries are isolated by the authenticated OAuth subject; the same identity can
+retrieve its entries from each connected agent.
+
+The remote service is split into `buddy_mcp/settings.py` (configuration and
+time-zone policy), `auth.py` (token verification and subject lookup),
+`validation.py` (input checks), `repository.py` (owner-scoped PostgreSQL
+queries), and `server.py` (MCP tool handlers and application startup).
+`buddy_service.py` remains a compatibility entry point. The unrelated local
+SQLite personal-life CLI remains in `buddy.py`.
+
 The app runs on the Buddy VM and Caddy routes the existing
 `workspace.mcpruntime.org` HTTPS host to `/buddy/mcp`; the Buddy MCP's internal
 HTTP path remains `/mcp`. Deployment uses Docker Compose and requires
@@ -28,6 +38,19 @@ Do not expose PostgreSQL publicly. Put the MCP endpoint behind HTTPS and the
 configured OAuth authorization server. The server URL defaults to
 `https://workspace.mcpruntime.org/buddy/mcp`; its OAuth resource identifier
 must be registered with the authorization server before agents can connect.
+
+## Timestamp behavior
+
+Buddy returns `occurred_at`, `created_at`, `updated_at`, and project activity
+times as ISO 8601 timestamps with the `+05:30` offset (India Standard Time,
+Asia/Kolkata). Inputs to the remote MCP tools must include a timezone offset;
+timestamps without one are rejected. PostgreSQL stores these values as
+`timestamptz`, which preserves the instant rather than the submitted timezone
+label. The service converts database values to IST when it returns them.
+
+The local CLI also uses IST for new entries and output. For `--at`, pass an ISO
+timestamp with an offset, for example `2026-09-23T15:00:00+05:30`. A timestamp
+without an offset is interpreted as IST by the local CLI.
 
 ## Agent skill
 
