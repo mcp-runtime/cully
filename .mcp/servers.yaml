@@ -20,6 +20,11 @@ servers:
           value: oauth
         - name: CULLY_JWKS_URL
           value: https://auth.mcpruntime.org/mcp-auth/.well-known/jwks.json
+      secretEnvVars:
+        - name: CULLY_DATA_API_TOKEN
+          secretKeyRef:
+            name: cully-data-api-token
+            key: CULLY_DATA_API_TOKEN
       namespace: mcp-servers
       tools:
         - name: cully_log
