@@ -13,6 +13,10 @@ The [Docker Compose setup](/oauth#self-hosted-docker-with-mcp-auth) starts Cully
 
 For Kubernetes or another container platform, Cully release tags publish matching `ghcr.io/mcp-runtime/cully-mcp`, `ghcr.io/mcp-runtime/cully-data` and `ghcr.io/mcp-runtime/cully-mem0` images. Use the [Compose file](https://github.com/mcp-runtime/cully/blob/main/deploy/self-hosted/compose.yaml) as the service and volume reference. Run the data image's `migrate` command before serving traffic. Give Mem0 its pgvector-enabled PostgreSQL database and persistent history volume. Keep both databases, Mem0 REST and the data API on private networks; expose only MCP through HTTPS.
 
+The [MCP Runtime deployment workflow](https://github.com/mcp-runtime/cully/blob/main/.github/workflows/deploy.yml) builds and publishes only the Cully MCP service. Its [server metadata](https://github.com/mcp-runtime/cully/blob/main/.mcp/servers.yaml) reads `CULLY_DATA_API_TOKEN` from the Kubernetes Secret `cully-data-api-token` in `mcp-servers`. Provision that Secret with the key `CULLY_DATA_API_TOKEN` and the same value used by the private data API before deploying. Keep the value out of server metadata and Git.
+
+After deployment, check that the Cully Deployment's updated and ready replicas match its desired replicas and that its pod runs the new image tag. The CLI can report Ready while an older pod serves traffic during a failed rollout ([Runtime issue #636](https://github.com/mcp-runtime/mcp-runtime/issues/636)).
+
 ## Connect sign-in
 
 1. Choose the public MCP URL, such as `https://mcp.example.com/mcp`, and an authorization-server URL. The exact MCP URL must be the token's resource audience.
