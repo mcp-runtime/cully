@@ -43,7 +43,7 @@ The first row under the agent is a one-line health bar. Every value is measured.
 
 ## The advisor panel
 
-Below the health bar, the panel shows session instruments and two prioritized advisor comments. Click anywhere in the panel, or press `Ctrl+]` or `F6`, to open the full advisor. Select with the mouse or Up and Down, preview with Enter, and press Tab for every instrument. See the [advisor](/advisor) for what it analyzes and how you apply a suggestion.
+Below the health bar, the panel shows session instruments and two prioritized advisor comments. Click anywhere in the panel, or press `Ctrl+]` or `F6`, to open the full advisor. Select with the mouse or Up and Down, preview with Enter, and press Tab for every instrument. See the [advisor](/advisor) for what it analyzes and how you apply a suggestion. In Warp, open the advisor with `Ctrl+]` or `F6` first: mouse tracking is deferred so Warp scroll mode is not consumed while you work.
 
 The panel grows only as far as its content needs and always leaves the agent at least 12 rows on a normal screen (8 on a short one). Terminals shorter than 12 rows give the agent the whole screen.
 

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -165,6 +166,102 @@ if [ "$1" -lt 33 ]; then exit 2; fi
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("pane output did not close")
+	}
+}
+
+func TestWarpPaneDefersMouseTrackingUntilAdvisorOpens(t *testing.T) {
+	t.Setenv("CULLY_ANALYZE_DISABLE", "1")
+	t.Setenv("TERM_PROGRAM", "WarpTerminal")
+	dir := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", dir)
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	script := `#!/bin/sh
+printf 'warp child ready\n'
+sleep 2
+`
+	if err := os.WriteFile(filepath.Join(dir, "codex"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	master, slave, err := pty.Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer master.Close()
+	defer slave.Close()
+	if err := pty.Setsize(slave, &pty.Winsize{Rows: 40, Cols: 120}); err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	var captured strings.Builder
+	snapshot := func() string {
+		mu.Lock()
+		defer mu.Unlock()
+		return captured.String()
+	}
+	ready := make(chan struct{})
+	go func() {
+		buf := make([]byte, 4096)
+		notified := false
+		for {
+			n, readErr := master.Read(buf)
+			mu.Lock()
+			captured.Write(buf[:n])
+			got := captured.String()
+			mu.Unlock()
+			if !notified && strings.Contains(got, "warp child ready") {
+				close(ready)
+				notified = true
+			}
+			if strings.Contains(got, "\x1b[?1049l") || readErr != nil {
+				return
+			}
+		}
+	}()
+	done := make(chan error, 1)
+	go func() { done <- RunPane("codex", nil, slave, slave) }()
+	select {
+	case <-ready:
+	case <-time.After(5 * time.Second):
+		t.Fatal("warp child did not start")
+	}
+	startup := snapshot()
+	if strings.Contains(startup, "\x1b[?1000h") || strings.Contains(startup, "\x1b[?1006h") {
+		t.Fatal("Warp must not enable mouse tracking at startup; that steals scroll mode")
+	}
+	if !strings.Contains(startup, "\x1b[?1049h") {
+		t.Fatal("Warp pane still uses the alternate screen")
+	}
+	_, _ = master.Write([]byte{0x1d}) // Ctrl+] opens advisor
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		got := snapshot()
+		if strings.Contains(got, "\x1b[?1000h") && strings.Contains(got, "\x1b[?1006h") {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	got := snapshot()
+	if !strings.Contains(got, "\x1b[?1000h") || !strings.Contains(got, "\x1b[?1006h") {
+		t.Fatal("opening the advisor in Warp must enable mouse tracking")
+	}
+	_, _ = master.Write([]byte{0x1b}) // Esc closes advisor
+	deadline = time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if strings.Contains(snapshot(), "\x1b[?1000l") {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if !strings.Contains(snapshot(), "\x1b[?1000l") {
+		t.Fatal("closing the advisor in Warp must release mouse tracking for scroll mode")
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("warp pane did not exit")
 	}
 }
 

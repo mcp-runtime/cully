@@ -14,8 +14,14 @@ func TestTerminalProfileSeparatesWarpFromExecutionHost(t *testing.T) {
 	if profile.Program != "WarpTerminal" || profile.Type != "xterm-256color" || profile.Shell != "bash" || profile.Connection != "ssh" {
 		t.Fatalf("%+v", profile)
 	}
+	if !profile.isWarp() {
+		t.Fatal("WarpTerminal must report as Warp")
+	}
 	if !strings.Contains(profile.label(), "Warp · xterm-256color · login shell bash") || !strings.Contains(profile.signals(), "execution_os=") {
 		t.Fatal(profile)
+	}
+	if (terminalProfile{Program: "iTerm.app"}).isWarp() {
+		t.Fatal("non-Warp terminals must not claim Warp")
 	}
 }
 

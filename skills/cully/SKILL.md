@@ -39,6 +39,8 @@ What the terminal can know differs by agent:
 - Cursor supplies shell, file-edit and MCP events. Its shell hook reports no exit code, so a failed Cursor command is not marked failed. Model, context, tokens and rate limits have no Cursor feed, so the panel shows them as unavailable rather than waiting.
 - Other agents get the health bar and Git state, and tool events only if they can run Cully's hook.
 
+In Warp, mouse tracking stays off until the advisor opens so Warp scroll mode keeps working. Open the advisor with Ctrl+] or F6; Esc closes it and releases the mouse again. Other terminals still support click-to-open on the compact panel.
+
 Loop detection reports what repeated, for example that the same command failed three times after edits. It never states a cause. When it fires, read the first failure before editing again.
 
 The journal records tool kind, success, project-relative file paths with the operation, and the program and subcommand of a command. It never records prompts, file contents, command arguments or output.

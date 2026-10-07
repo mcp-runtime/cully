@@ -45,7 +45,16 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 		return err
 	}
 	defer term.Restore(int(input.Fd()), state) //nolint:errcheck
-	if _, err := io.WriteString(output, "\x1b[?1049h\x1b[?25l\x1b[?1000h\x1b[?1006h"); err != nil {
+	// Mouse tracking steals Warp's scroll mode (and the host wheel). Keep it
+	// off in Warp until the advisor drawer is open; other terminals keep the
+	// always-on click-to-open panel behavior.
+	profile := detectTerminalProfile()
+	startup := "\x1b[?1049h\x1b[?25l"
+	mouseTracking := !profile.isWarp()
+	if mouseTracking {
+		startup += "\x1b[?1000h\x1b[?1006h"
+	}
+	if _, err := io.WriteString(output, startup); err != nil {
 		return err
 	}
 	defer io.WriteString(output, "\x1b[?1000l\x1b[?1006l\x1b[0m\x1b[?25h\x1b[?1049l") //nolint:errcheck
@@ -75,8 +84,7 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 	defer pruneJournals()
 	cmd := exec.Command(agent.Binary, agent.args(args)...)
 	cmd.Env = append(os.Environ(), "CULLY_PANE_SESSION="+session, "CULLY_SESSION="+session, "CULLY_AGENT="+agent.Name)
-	view := sessionView{Agent: agent.Name, Project: currentDir(), Branch: gitBranch(currentDir()), Started: time.Now(), Daemon: isDaemonRunning()}
-	view.Terminal = detectTerminalProfile()
+	view := sessionView{Agent: agent.Name, Project: currentDir(), Branch: gitBranch(currentDir()), Started: time.Now(), Daemon: isDaemonRunning(), Terminal: profile}
 	restoredSession := false
 	lastSessionSave := time.Time{}
 	refreshSession := func() {
@@ -205,6 +213,16 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 			cancelPreview()
 		}
 	}()
+	// Warp keeps host scroll mode while mouse tracking is off. Toggle tracking
+	// with the advisor drawer so clicks still work once the user opens it.
+	syncMouseTracking := func() {
+		want := !profile.isWarp() || drawer.Open
+		if mouseTracking == want {
+			return
+		}
+		writeMouseTracking(output, want)
+		mouseTracking = want
+	}
 	type reviewResult struct {
 		generation int
 		review     advisorReview
@@ -228,6 +246,7 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 				// user's current draft. The foreground agent retains its normal review.
 				_, _ = child.Write([]byte("\x1b[200~\n" + terminalSafeText(review.Handoff) + "\x1b[201~"))
 				drawer.close()
+				syncMouseTracking()
 			} else if err := acceptAdvisorReview(view.Project, review); err != nil {
 				drawer.Message = red + "Could not apply: " + err.Error() + rst
 			} else {
@@ -282,6 +301,7 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 				} else {
 					drawer.open(advice)
 				}
+				syncMouseTracking()
 				dirty = true
 				continue
 			}
@@ -290,6 +310,7 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 				if !mouse.Release {
 					if !drawer.Open && mouse.Button == 0 && mouse.Y > top {
 						drawer.open(advice)
+						syncMouseTracking()
 					} else if drawer.Open {
 						switch mouse.Button {
 						case 64:
@@ -317,6 +338,7 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 						cancelPreview()
 					}
 					drawer.escape()
+					syncMouseTracking()
 				case "up":
 					drawer.move(-1)
 				case "down":
@@ -340,6 +362,7 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 				default:
 					if bytes.Equal(key.Data, []byte{3}) {
 						drawer.close()
+						syncMouseTracking()
 					} // return control without killing Codex
 				}
 				dirty = true
@@ -496,6 +519,16 @@ func currentDir() string {
 		return "."
 	}
 	return cwd
+}
+
+// writeMouseTracking turns host mouse reporting on or off. Leaving it on in
+// Warp consumes scroll mode; the pane enables it only while the advisor is open.
+func writeMouseTracking(w io.Writer, on bool) {
+	if on {
+		_, _ = io.WriteString(w, "\x1b[?1000h\x1b[?1006h")
+		return
+	}
+	_, _ = io.WriteString(w, "\x1b[?1000l\x1b[?1006l")
 }
 
 func renderTerminalPane(emulator *vt.Emulator, cols, rows int, content []string, nativeFooter bool, hud string) string {

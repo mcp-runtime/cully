@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.10.2
+
+- In Warp, the Cully terminal no longer enables mouse tracking at startup. That mode was consuming Warp scroll mode and the host mouse wheel. Mouse tracking turns on only while the advisor drawer is open (Ctrl+] / F6) and turns off again when it closes. Other terminals keep click-to-open on the compact panel.
+
 ## 0.10.1
 
 - In the Cursor (and other no-usage-feed) terminal panel, show Model and Context as unavailable instead of "waiting for agent". Cursor has no Codex footer or Claude statusline feed for those instruments; Tokens and rate limits already said unavailable. Claude and Codex still wait for their real feeds.

@@ -33,6 +33,13 @@ func terminalField(value string) string {
 	return value
 }
 
+// isWarp reports Warp's terminal program. Warp's scroll mode needs the host
+// to own the mouse wheel; Cully therefore defers mouse tracking until the
+// advisor drawer is open.
+func (p terminalProfile) isWarp() bool {
+	return strings.EqualFold(p.Program, "WarpTerminal") || strings.EqualFold(p.Program, "Warp")
+}
+
 func (p terminalProfile) label() string {
 	program := p.Program
 	if strings.EqualFold(program, "WarpTerminal") {
