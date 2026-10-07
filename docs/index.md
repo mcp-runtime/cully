@@ -5,7 +5,7 @@ description: Understand Cully's advisor and memory, then choose the right guide.
 
 # Cully docs
 
-Cully helps you resume work across Claude Code, Codex and Cursor and see useful guidance during a session.
+Cully is your companion for better work and everyday life. It remembers what you do and how you work, helps you guide Claude Code, Codex and Cursor, manage projects and improve your workflow, and keeps personal context when you ask it to.
 
 ## How the parts fit together
 
