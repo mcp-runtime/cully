@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.1
+
 - Run a single end-to-end CI check that follows the documented path: install, `cully setup`, MCP use and uninstall, replacing the separate compose-only job.
 - Describe Cully in the docs introduction as a companion for work and everyday life, not only session resume and guidance.
 
