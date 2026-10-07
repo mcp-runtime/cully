@@ -138,3 +138,31 @@ func TestPanelWaitingTextNamesTheRunningAgent(t *testing.T) {
 		t.Fatalf("codex: %q", got)
 	}
 }
+
+func TestCursorMissingUsageShowsUnavailable(t *testing.T) {
+	view := sessionView{Agent: "cursor", Project: "/work/cully"}
+	if got := missingUsageText(view, true); got != "unavailable" {
+		t.Fatalf("cursor missing usage: %q", got)
+	}
+	if got := missingUsageText(view, false); got != "unavailable" {
+		t.Fatalf("cursor model placeholder: %q", got)
+	}
+	rows, _ := compactInstrumentRows(100, toolStats{}, view)
+	plain := normalizedCodexPanel(strings.Join(rows, "\n"))
+	for _, want := range []string{"Model unavailable", "Context unavailable", "Tokens unavailable", "5h / Weekly unavailable"} {
+		if !strings.Contains(plain, normalizedCodexPanel(want)) {
+			t.Fatalf("missing %q in %q", want, plain)
+		}
+	}
+	for _, ban := range []string{"waiting for Cursor", "waiting for agent", "waiting for Codex"} {
+		if strings.Contains(plain, normalizedCodexPanel(ban)) {
+			t.Fatalf("cursor panel must not wait for a usage feed: found %q", ban)
+		}
+	}
+	if !agentHasUsageFeed("claude") || !agentHasUsageFeed("codex") || !agentHasUsageFeed("") {
+		t.Fatal("claude, codex and empty agent must keep a usage feed")
+	}
+	if agentHasUsageFeed("cursor") || agentHasUsageFeed("other-cli") {
+		t.Fatal("cursor and unknown agents must not claim a usage feed")
+	}
+}

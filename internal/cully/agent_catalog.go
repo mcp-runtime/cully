@@ -35,6 +35,11 @@ type agentSpec struct {
 	ResumeID  func(args []string) string
 	// NativeFooter reports a terminal footer the wrapper can read.
 	NativeFooter bool
+	// HasUsageFeed is true when the agent can eventually populate model,
+	// context, token or rate-limit instruments (Codex footer or Claude
+	// statusline snapshot). Cursor has neither, so missing values stay
+	// unavailable rather than "waiting".
+	HasUsageFeed bool
 	// AdvisorMCPScope runs the headless advisor under this agent's MCP scope.
 	AdvisorMCPScope bool
 	// PaneRegistration keeps a pane binding the worker checks before acting
@@ -68,6 +73,7 @@ func buildAgentCatalog() []agentSpec {
 			ConfigDir:        ConfigDir,
 			Aliases:          []string{"claude-code", "claude code"},
 			Binary:           "claude",
+			HasUsageFeed:     true,
 			AdvisorMCPScope:  false,
 			PaneRegistration: false,
 			MCPKind:          "json",
@@ -100,6 +106,7 @@ func buildAgentCatalog() []agentSpec {
 			Launch:           func(args []string) []string { return append([]string{"-c", codexStatusConfig}, args...) },
 			ResumeID:         codexExplicitResumeID,
 			NativeFooter:     true,
+			HasUsageFeed:     true,
 			AdvisorMCPScope:  true,
 			PaneRegistration: true,
 			MCPKind:          "toml",

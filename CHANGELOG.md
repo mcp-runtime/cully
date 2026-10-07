@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.10.1
+
+- In the Cursor (and other no-usage-feed) terminal panel, show Model and Context as unavailable instead of "waiting for agent". Cursor has no Codex footer or Claude statusline feed for those instruments; Tokens and rate limits already said unavailable. Claude and Codex still wait for their real feeds.
+
 ## 0.10.0
 
 - Define explicit session task-link semantics: omitting the task keeps the current link, a new name links it, and `clear_task` in `cully_session` unlinks it while keeping the task record. Repeating a task name after a clear relinks the kept record instead of adding a duplicate. `cully_update` can no longer move a linked task entry to another section, and deleting a task entry clears only the link. The deployment manifests now gate all eleven registered tools, and a contract test keeps registration, manifests and the skill in agreement.

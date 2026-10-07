@@ -138,7 +138,7 @@ func sessionStatusContent(cols int, advice []string, stats toolStats, view sessi
 	}
 	grid([]string{cyan + bold + "✦ Cully" + rst + "    " + formatPhaseBadge(phase)}, []string{dim + "⏱️ elapsed " + rst + elapsed})
 	rows = append(rows, "")
-	context := dim + waitingForAgent(view, true) + rst
+	context := dim + missingUsageText(view, true) + rst
 	if view.ContextKnown {
 		used := 100 - view.ContextLeft
 		context = pctColor(used) + gauge(used) + bold + fmt.Sprintf("  %d%% used  ·  %d%% left", used, view.ContextLeft) + rst
@@ -155,7 +155,7 @@ func sessionStatusContent(cols int, advice []string, stats toolStats, view sessi
 	}
 	model := blue + bold + view.Model + rst
 	if view.Model == "" {
-		model = dim + waitingForAgent(view, true) + rst
+		model = dim + missingUsageText(view, true) + rst
 	}
 	grid(metricRows("📁 Project", location, cellWidth), metricRows("🤖 Model", model, cellWidth))
 	if view.Terminal.Program != "" || view.Terminal.Type != "" {
@@ -566,7 +566,7 @@ func compactInstrumentRows(cols int, stats toolStats, view sessionView) ([]strin
 	rows = append(rows, "")
 	model := blue + bold + view.Model + rst
 	if view.Model == "" {
-		model = dim + waitingForAgent(view, false) + rst
+		model = dim + missingUsageText(view, false) + rst
 	}
 	errors := fmt.Sprint(stats.Errors)
 	if stats.Errors > 0 {
@@ -589,7 +589,7 @@ func compactInstrumentRows(cols int, stats toolStats, view sessionView) ([]strin
 	if view.Branch != "" {
 		location += " / " + magenta + view.Branch + rst
 	}
-	context := dim + waitingForAgent(view, true) + rst
+	context := dim + missingUsageText(view, true) + rst
 	if view.ContextKnown {
 		used := 100 - view.ContextLeft
 		context = pctColor(used) + gauge(used) + fmt.Sprintf(" %d%% used · %d%% left", used, view.ContextLeft) + rst
@@ -855,7 +855,7 @@ func panelLines(cols, height int, content []string, hud string) []string {
 }
 
 // waitingForAgent names the agent the panel is waiting on. Codex supplies a
-// terminal footer; other agents feed the panel through their statusline hook.
+// terminal footer; Claude feeds the panel through its statusline hook.
 func waitingForAgent(view sessionView, footer bool) string {
 	name := agentDisplayName(view.Agent)
 	if view.Agent == "" || view.Agent == "codex" {
@@ -866,4 +866,27 @@ func waitingForAgent(view sessionView, footer bool) string {
 		return "waiting for Codex"
 	}
 	return "waiting for " + name
+}
+
+// agentHasUsageFeed reports whether model/context/token instruments can arrive
+// for this agent. An empty agent id keeps the historical Codex footer path.
+func agentHasUsageFeed(agent string) bool {
+	id := normalizeAgentID(agent)
+	if id == "" {
+		return true
+	}
+	if spec, ok := lookupAgentSpec(id); ok {
+		return spec.HasUsageFeed
+	}
+	return false
+}
+
+// missingUsageText is the placeholder when model or context has not arrived.
+// Agents with a usage feed wait for it; Cursor and unknown agents show
+// unavailable because no feed will fill those rows.
+func missingUsageText(view sessionView, footer bool) string {
+	if agentHasUsageFeed(view.Agent) {
+		return waitingForAgent(view, footer)
+	}
+	return "unavailable"
 }

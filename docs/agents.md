@@ -58,7 +58,7 @@ The Codex wrapper also dispatches bounded session signals to the shared worker t
 
 Run `cully setup --agent cursor --mcp-url URL`, then restart Cursor. Start the CLI agent with `cully run cursor`. With an OAuth server, sign in from Cursor's MCP settings. User-level hooks on your laptop do not run in Cursor cloud agents. Connected cloud agents can still use the Cully MCP tools.
 
-Cursor's shell hook reports no exit code, so a failed Cursor command is not marked failed, and loop detection is weaker for Cursor. The continuity stop hook can dispatch coarse session metadata to the shared worker through `cursor-agent` print and ask mode. It does not read transcripts.
+Cursor's shell hook reports no exit code, so a failed Cursor command is not marked failed, and loop detection is weaker for Cursor. The continuity stop hook can dispatch coarse session metadata to the shared worker through `cursor-agent` print and ask mode. It does not read transcripts. Cursor has no native model, context or rate-limit feed for the terminal panel, so those rows show unavailable instead of waiting for an agent signal that will not arrive. Use Cursor's own UI for model and context.
 
 ## Any other agent
 

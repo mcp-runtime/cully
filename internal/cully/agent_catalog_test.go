@@ -74,6 +74,15 @@ func TestAgentLaunchTableFromCatalog(t *testing.T) {
 	if err != nil || agent.Binary != "cursor-agent" || agent.NativeFooter {
 		t.Fatalf("cursor launch entry = %+v %v", agent, err)
 	}
+	cursor, ok := lookupAgentSpec("cursor")
+	if !ok || cursor.HasUsageFeed {
+		t.Fatalf("cursor must not claim a usage feed: %+v", cursor)
+	}
+	claude, _ := lookupAgentSpec("claude")
+	codex, _ := lookupAgentSpec("codex")
+	if !claude.HasUsageFeed || !codex.HasUsageFeed {
+		t.Fatal("claude and codex must keep a usage feed")
+	}
 	agent, err = lookupPaneAgent("mycoder")
 	if err != nil || agent.Binary != "mycoder" || agent.NativeFooter {
 		t.Fatalf("generic fallback = %+v %v", agent, err)

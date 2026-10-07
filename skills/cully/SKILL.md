@@ -36,7 +36,7 @@ What the terminal can know differs by agent:
 
 - Codex supplies model, context, tokens and quota through its native footer.
 - Claude Code supplies context pressure through a hook-fed snapshot; its own status line stays silent inside the terminal.
-- Cursor supplies shell, file-edit and MCP events. Its shell hook reports no exit code, so a failed Cursor command is not marked failed.
+- Cursor supplies shell, file-edit and MCP events. Its shell hook reports no exit code, so a failed Cursor command is not marked failed. Model, context, tokens and rate limits have no Cursor feed, so the panel shows them as unavailable rather than waiting.
 - Other agents get the health bar and Git state, and tool events only if they can run Cully's hook.
 
 Loop detection reports what repeated, for example that the same command failed three times after edits. It never states a cause. When it fires, read the first failure before editing again.
