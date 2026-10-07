@@ -30,8 +30,10 @@ func InstallWithMCP(endpoint string, oauth bool, targets ...string) error {
 	cwd, _ := os.Getwd()
 	if len(targets) == 0 {
 		targets = detectedInstallTargets(cwd)
+		fmt.Printf("Detected coding agents: %s\n", strings.Join(targets, ", "))
 	}
 	for _, target := range expandInstallTargets(targets) {
+		fmt.Printf("Configuring %s hooks and controls in %s\n", target, cwd)
 		switch target {
 		case "claude":
 			if err := installClaude(); err != nil {
@@ -48,20 +50,22 @@ func InstallWithMCP(endpoint string, oauth bool, targets ...string) error {
 		default:
 			return fmt.Errorf("unknown install target %q (use claude, codex, cursor, or all)", target)
 		}
+		fmt.Printf("Installing the Cully skill for %s\n", target)
 		if err := installMemorySkill(target); err != nil {
 			return err
 		}
 		if endpoint != "" {
+			fmt.Printf("Connecting %s to Cully MCP at %s\n", target, endpoint)
 			if err := AddMCP(os.Stdout, target, endpoint, oauth); err != nil {
 				return err
 			}
 		}
 	}
+	fmt.Println("Starting or checking the advisor daemon")
 	if err := StartDaemonDetached(); err != nil {
-		fmt.Println("Advisor unavailable; rerun cully agent setup to retry:", err)
-	} else {
-		fmt.Println("Advisor started; inspect with cully status")
+		return fmt.Errorf("advisor startup failed: %w; rerun cully setup with the same options to retry", err)
 	}
+	fmt.Println("Advisor ready; inspect with cully status")
 	if endpoint == "" {
 		fmt.Println("Connect shared memory with: cully mcp add --url URL")
 	}

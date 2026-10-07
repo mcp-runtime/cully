@@ -14,8 +14,8 @@ Cully's memory service runs on your laptop for the default single-user setup. Yo
 
    <InstallCommand kind="setup" />
 
-   Run `cully setup` without `--agent` if you only want to start the services.
-3. Wait for `Cully MCP is configured at ...` to appear, then restart your agent. Setup registers the MCP connection, configures the Cully skill, hooks and agent controls, and starts the advisor daemon if it is not already running. If advisor startup fails, setup prints a warning and `cully status` shows its state.
+   Run `cully setup` without `--agent` to detect and connect installed coding agents, or use `--agent all` to configure all three supported agents.
+3. Wait for `Setup complete` to appear, then restart your agent. Setup registers the MCP connection, configures the Cully skill, hooks and agent controls, and starts the advisor daemon if it is not already running. If any component fails, setup exits with an error and does not report completion. Resolve the reported error and rerun the same command; existing credentials and running services are reused.
 4. Work on a substantive task. Your connected agent is prompted to find relevant notes and save a concise work summary for later sessions. The [memory guide](/memory) explains what gets saved.
 
 The command downloads the matching Cully release's Docker files, prepares the local configuration, starts PostgreSQL, Mem0, the private data API and the MCP server, and creates the database schema. No repository checkout is needed. It generates service credentials and a stable single-user owner in `~/.cully/config.json`; keep that file private and back it up with your Docker volumes. Editable stack settings live in `~/.cully/self-hosted/config/.env`. You do not need to edit either file for the default laptop setup. `cully setup --prepare` only downloads the stack and creates editable configuration without starting services; use it when following the [team deployment guide](/team-deployment) to set up OAuth and public hostnames before the first start.
@@ -24,6 +24,7 @@ The command downloads the matching Cully release's Docker files, prepares the lo
 
 | Service | Job | Reachability |
 | --- | --- | --- |
+| Advisor daemon | Keeps session signals current and processes advice. | Local background process. |
 | Cully MCP | Gives connected agents the memory tools. | Published on loopback by default. |
 | Cully data API | Validates and stores memory requests from MCP. | Private Compose network. |
 | PostgreSQL | Holds authoritative notes and indexing jobs. | Private Compose network. |
@@ -59,7 +60,7 @@ managed integration and leaves the local services running; use `claude`,
 Use the MCP URL printed by setup:
 
 ```sh
-cully agent setup claude --mcp-url http://127.0.0.1:8080/mcp
+cully setup --agent claude --mcp-url http://127.0.0.1:8080/mcp
 ```
 
 Replace the example URL with the one printed on your machine. You can use `codex` or `cursor` instead of `claude`. Restart that agent after setup. See [connect an agent](/agents) for each client's commands.

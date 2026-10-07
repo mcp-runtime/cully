@@ -13,7 +13,7 @@ Pick your agent, then copy the command:
 
 <InstallCommand />
 
-The installer puts Cully in that agent's `bin` directory, starts the advisor and adds the directory to your zsh or Bash startup file when needed. Open a new terminal before the next step, or use the installed binary path printed by the installer.
+The installer puts Cully in that agent's `bin` directory and adds the directory to your zsh or Bash startup file when needed. The setup command in step 2 installs the integrations and starts all components, including the advisor. Open a new terminal before the next step, or use the installed binary path printed by the installer.
 
 For source builds, version pinning or custom PATH setup, see [installer options](/installation).
 
@@ -23,9 +23,9 @@ With Docker running, connect the agent you installed:
 
 <InstallCommand kind="setup" />
 
-Use the same agent you picked in step 1. This one command downloads the matching local stack, creates private credentials that stay stable across restarts, and starts PostgreSQL, Mem0, the private data API and Cully MCP in Docker. It connects your agent to MCP, configures the Cully skill, session hooks and [agent-specific controls](/agents), and starts the local advisor daemon if needed. If the advisor cannot start, setup prints a warning; `cully status` shows its state. See [what runs on your laptop](/hosting#what-starts-on-your-laptop).
+Use the same agent you picked in step 1, or run bare `cully setup` to detect installed agents automatically. This one command downloads the matching local stack, creates private credentials that stay stable across restarts, and starts PostgreSQL, Mem0, the private data API and Cully MCP in Docker. It connects your agent to MCP, configures the Cully skill, session hooks and [agent-specific controls](/agents), and starts the local advisor daemon if needed. Setup only reports completion after the advisor is running. A component failure exits with an error; fix it and rerun the same setup command to retry. See [what runs on your laptop](/hosting#what-starts-on-your-laptop).
 
-When `Cully MCP is configured at ...` appears, restart your agent. In Codex, review and trust the installed Cully hooks in `/hooks` when asked. You do not need a repository checkout or OAuth for this laptop setup.
+When `Setup complete` appears, restart your agent. In Codex, review and trust the installed Cully hooks in `/hooks` when asked. You do not need a repository checkout or OAuth for this laptop setup.
 
 Setup prints each stage, including image pulls and builds, database startup, migrations and agent connection. It confirms that private credentials are ready without showing their values. Mem0's local embedding model is downloaded into its Docker image on the first build.
 
@@ -73,7 +73,7 @@ You can also use Cully inside your agent:
 | Codex | Start `cully codex` for the live advisor pane, or run `/prompts:cully suggestions`. |
 | Cursor | Run the project `/cully suggestions` command or ask Cursor to check suggestions. |
 
-If Cully lists a numbered improvement, use its number with `cully apply 1 --dry-run` to inspect the proposed change. Review it before applying. `cully status` also shows whether the advisor daemon is running; if startup failed, run `cully agent setup codex` with your agent name to retry. See the [advisor commands](/advisor#commands) for the rest.
+If Cully lists a numbered improvement, use its number with `cully apply 1 --dry-run` to inspect the proposed change. Review it before applying. `cully status` also shows whether the advisor daemon is running; if startup failed, run `cully setup --agent codex` with your agent name to retry. See the [advisor commands](/advisor#commands) for the rest.
 
 To stop and disconnect the local stack later, run `cully uninstall`. It keeps
 your notes by default. The [self-hosting guide](/hosting#uninstall-the-laptop-stack)

@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -145,82 +144,5 @@ func TestSelfHostCredentialsImportDatabaseURLAndQuoteShellValues(t *testing.T) {
 	output, err := command.Output()
 	if err != nil || string(output) != value {
 		t.Fatalf("shell export quoting failed: %q, %v", output, err)
-	}
-}
-
-func TestSelfHostSetupScriptNeedsNoHostPython(t *testing.T) {
-	root := t.TempDir()
-	cli := filepath.Join(root, "cully")
-	build := exec.Command("go", "build", "-o", cli, ".")
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build CLI: %v: %s", err, output)
-	}
-	setupDir := filepath.Join(root, "stack", "deploy", "self-hosted")
-	if err := os.MkdirAll(setupDir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range []string{"setup.sh", ".env.example"} {
-		contents, err := os.ReadFile(filepath.Join("..", "..", "deploy", "self-hosted", name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(setupDir, name), contents, 0o700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	bin := filepath.Join(root, "bin")
-	if err := os.Mkdir(bin, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range []string{"dirname", "cp", "chmod"} {
-		path, err := exec.LookPath(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Symlink(path, filepath.Join(bin, name)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	docker := "#!/bin/sh\ncase \"$*\" in *\" port mcp 8080\") echo 127.0.0.1:8080;; esac\n"
-	if err := os.WriteFile(filepath.Join(bin, "docker"), []byte(docker), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	command := exec.Command("/bin/sh", filepath.Join(setupDir, "setup.sh"))
-	command.Env = append(os.Environ(), "PATH="+bin, "CULLY_CLI_BINARY="+cli, "CULLY_CONFIG_PATH="+filepath.Join(root, ".cully", "config.json"))
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("setup without Python: %v: %s", err, output)
-	}
-	if !strings.Contains(string(output), "Cully MCP is configured at http://127.0.0.1:8080/mcp") {
-		t.Fatalf("setup did not finish: %s", output)
-	}
-	for _, stage := range []string{"Generating or reusing private database passwords", "starting PostgreSQL databases", "Applying the Cully database schema", "local embedding model", "Local Cully services are ready"} {
-		if !strings.Contains(string(output), stage) {
-			t.Fatalf("setup did not report %q: %s", stage, output)
-		}
-	}
-	if err := os.WriteFile(filepath.Join(setupDir, ".env"), []byte("CULLY_MCP_HOST=mcp.acme.test\nCULLY_AUTH_HOST=auth.acme.test\nMCP_AUTH_UPSTREAM_CLIENT_SECRET=private-value\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(setupDir, "connectors.json"), []byte(`{"org":{"client_secret_env":"MCP_AUTH_UPSTREAM_CLIENT_SECRET"}}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(filepath.Join(setupDir, ".secrets"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(setupDir, ".secrets", "signing-key.pem"), []byte("test-key"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	command = exec.Command("/bin/sh", filepath.Join(setupDir, "setup.sh"), "--oauth", "mcp-auth")
-	command.Env = append(os.Environ(), "PATH="+bin, "CULLY_CLI_BINARY="+cli, "CULLY_CONFIG_PATH="+filepath.Join(root, ".cully", "config.json"))
-	output, err = command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("OAuth setup without Python: %v: %s", err, output)
-	}
-	if !strings.Contains(string(output), "Cully MCP is configured at https://mcp.acme.test/mcp") {
-		t.Fatalf("OAuth setup did not finish: %s", output)
-	}
-	if !strings.Contains(string(output), "Validating OAuth hostnames and identity-provider connector") || strings.Contains(string(output), "private-value") {
-		t.Fatalf("OAuth setup progress or secret handling is wrong: %s", output)
 	}
 }

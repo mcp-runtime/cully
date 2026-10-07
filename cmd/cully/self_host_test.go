@@ -64,9 +64,9 @@ func TestExtractStackKeepsFilesInsideManagedDirectory(t *testing.T) {
 	}
 }
 
-func TestSetupRejectsRemoteMCPOption(t *testing.T) {
-	if err := run([]string{"setup", "codex", "--mcp-url", "https://mcp.example.com/mcp"}); err == nil {
-		t.Fatal("accepted a remote MCP URL for server setup")
+func TestAgentSetupCommandRemoved(t *testing.T) {
+	if err := run([]string{"agent", "setup", "codex"}); err == nil {
+		t.Fatal("removed agent setup command still works")
 	}
 }
 

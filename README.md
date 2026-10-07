@@ -24,6 +24,6 @@ Works with Claude Code, Codex and Cursor. Installed hooks ask the connected agen
 curl -fsSL https://cully.net/install.sh | sh -s -- --agent codex
 ```
 
-Open a new terminal, then run `cully setup --agent codex` to set up Cully on your laptop and connect Codex. See the [quickstart](https://docs.cully.net/quickstart) for prerequisites and other agents.
+Open a new terminal, then run `cully setup` to start the local memory stack and advisor and connect detected coding agents. Use `--agent codex` to select Codex. Setup logs each stage and reports completion only after all components are ready. See the [quickstart](https://docs.cully.net/quickstart) for prerequisites and other agents.
 
 Licensed under [Apache 2.0](LICENSE).

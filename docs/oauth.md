@@ -56,7 +56,7 @@ curl -fsS https://mcp.example.com/.well-known/oauth-protected-resource/mcp
 
 ## Connect to a server that already uses OAuth
 
-Run `cully agent setup codex --mcp-url https://mcp.example.com/mcp --oauth`, restart Codex and run `codex mcp login cully`. See [connect an agent](/agents) for Claude Code and Cursor.
+Run `cully setup --agent codex --mcp-url https://mcp.example.com/mcp --oauth`, restart Codex and run `codex mcp login cully`. See [connect an agent](/agents) for Claude Code and Cursor.
 
 Cully checks the RS256 token signature, issuer, exact MCP resource URL, expiration, subject and tool scopes. The data API and Mem0 use separate private service credentials. For another container platform or authorization server, see [team deployment](/team-deployment) and the [configuration reference](/configuration#manual-mcp-service-settings).
 

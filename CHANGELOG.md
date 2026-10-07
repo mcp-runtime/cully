@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.6.0
+
+- Replace `cully agent setup` with one `cully setup` command for local services, detected agent integrations and the advisor; use `--mcp-url` for existing servers.
+- Log startup stages and return errors when the advisor or another component fails; keep `--prepare` configuration-only.
+- Install project hooks in the caller's directory, and have the installer direct local users to the complete setup command.
+
+## Earlier changes
+
 - Accept GitHub source archives with global PAX headers so the published CLI can download and start its matching self-hosted stack.
 - Clarify that `cully setup` prepares configuration and starts the full local stack; `--prepare` stops before starting services for team configuration.
 - Add `cully uninstall` for local Docker and agent cleanup, with explicit `--purge-data` for memory deletion.

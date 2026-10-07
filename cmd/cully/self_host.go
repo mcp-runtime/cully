@@ -21,8 +21,8 @@ const maxSourceSize = 200 << 20
 var releaseVersion = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?$`)
 
 func runSelfHost(agent string, oauth, prepare bool) error {
-	if agent != "" && agent != "claude" && agent != "codex" && agent != "cursor" {
-		return fmt.Errorf("choose one agent: claude, codex, or cursor")
+	if agent != "" && agent != "claude" && agent != "codex" && agent != "cursor" && agent != "all" {
+		return fmt.Errorf("choose an agent: claude, codex, cursor, or all")
 	}
 	ref, err := stackRef(version)
 	if err != nil {
@@ -33,6 +33,7 @@ func runSelfHost(agent string, oauth, prepare bool) error {
 		return err
 	}
 	base := filepath.Join(home, ".cully", "self-hosted")
+	fmt.Println("Preparing Cully's local stack and persistent configuration")
 	releaseDir, err := ensureStack(ref, base)
 	if err != nil {
 		return err
@@ -61,11 +62,18 @@ func runSelfHost(agent string, oauth, prepare bool) error {
 	if err != nil {
 		return err
 	}
-	command.Env = append(os.Environ(), "CULLY_CLI_BINARY="+executable)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	command.Env = append(os.Environ(), "CULLY_CLI_BINARY="+executable, "CULLY_SETUP_CWD="+cwd)
 	command.Stdin = os.Stdin
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
-	return command.Run()
+	if err := command.Run(); err != nil {
+		return fmt.Errorf("Cully setup incomplete: %w; resolve the error above and rerun cully setup with the same options", err)
+	}
+	return nil
 }
 
 func stackRef(buildVersion string) (string, error) {

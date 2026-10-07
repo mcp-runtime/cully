@@ -1,6 +1,6 @@
 #!/bin/sh
-# Cully installer — downloads a prebuilt binary, then self-registers it for
-# detected coding agents. Use --from-source to explicitly build with Go.
+# Cully installer — downloads a prebuilt binary. Run cully setup afterwards
+# for the complete local stack. Use --from-source to explicitly build with Go.
 #
 #   curl -fsSL https://cully.net/install.sh | sh -s -- --agent codex --mcp-url http://127.0.0.1:8080/mcp
 #
@@ -114,11 +114,6 @@ if [ -x "$BIN_DIR/cully" ]; then
   if [ -n "$old_ver" ] && [ "$old_ver" = "$new_ver" ]; then
     say "Already on $new_ver"
   fi
-  # A running advisor daemon holds the OLD binary's code in memory; installing
-  # over it silently leaves the stale version running. Stop it first so
-  # `cully agent setup` (below) starts the new binary fresh.
-  say "Stopping any running advisor daemon before upgrade"
-  "$BIN_DIR/cully" daemon stop >/dev/null 2>&1 || true
 fi
 
 mkdir -p "$BIN_DIR"
@@ -127,9 +122,10 @@ install -m 0755 "$tmp_bin" "$BIN_DIR/cully"
 [ "$os" = "darwin" ] && xattr -d com.apple.quarantine "$BIN_DIR/cully" 2>/dev/null || true
 
 say "Installed binary -> $BIN_DIR/cully ($("$BIN_DIR/cully" version 2>/dev/null || echo "$ver"))"
-# A previous install may have used another agent's bin directory. Restart the
-# shared advisor even when this target directory did not contain cully yet.
-"$BIN_DIR/cully" daemon stop >/dev/null 2>&1 || true
+# A previous install may have used another agent's bin directory. Stop the
+# shared advisor so setup will start the newly installed version.
+say "Stopping any running advisor daemon before setup"
+"$BIN_DIR/cully" _internal stop-daemon >/dev/null 2>&1 || true
 current_cully="$(command -v cully 2>/dev/null || true)"
 if [ "$current_cully" != "$BIN_DIR/cully" ]; then
     # Setup starts the advisor daemon, so its first run needs the selected
@@ -166,13 +162,13 @@ if [ "$current_cully" != "$BIN_DIR/cully" ]; then
       say "For later CLI commands, add $BIN_DIR to your shell's PATH or use $BIN_DIR/cully"
     fi
 fi
-set --
-[ -z "$agent" ] || set -- "$@" "$agent"
-[ -z "$mcp_url" ] || set -- "$@" --mcp-url "$mcp_url"
-[ "$oauth" = false ] || set -- "$@" --oauth
-say "Registering coding agents${mcp_url:+ and MCP endpoint}"
-if "$BIN_DIR/cully" help | grep -q 'cully agent setup'; then
-  "$BIN_DIR/cully" agent setup "$@"
+if [ -n "$mcp_url" ]; then
+  set -- setup --mcp-url "$mcp_url"
+  [ -z "$agent" ] || set -- "$@" --agent "$agent"
+  [ "$oauth" = false ] || set -- "$@" --oauth
+  say 'Setting up coding agents and the advisor with your existing MCP server'
+  "$BIN_DIR/cully" "$@"
 else
-  "$BIN_DIR/cully" setup "$@"
+  say "CLI installed. Start Docker, then run: cully setup${agent:+ --agent $agent}"
+  say "Or use the installed path: $BIN_DIR/cully setup${agent:+ --agent $agent}"
 fi

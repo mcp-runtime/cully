@@ -5,7 +5,7 @@ description: Choose an agent, set up PATH, pin a release or build Cully from sou
 
 # Installer options
 
-Follow the [quickstart](/quickstart) for the normal laptop setup. The installer accepts `--agent claude`, `--agent codex`, `--agent cursor` or `--agent all`; with no agent selected, Cully detects installed agents. It registers the selected integrations and starts the advisor daemon.
+Follow the [quickstart](/quickstart) for the normal laptop setup. The installer accepts `--agent claude`, `--agent codex`, `--agent cursor` or `--agent all`; with no agent selected, it installs the CLI in `~/.local/bin`. After installation, `cully setup` detects installed agents, registers their integrations and starts the full local stack and advisor daemon.
 
 ## macOS
 
@@ -34,7 +34,7 @@ If a company runs Cully for you, use its MCP URL when installing:
 
 <InstallCommand template="curl -fsSL https://cully.net/install.sh | sh -s -- --agent {agent} --mcp-url https://mcp.example.com/mcp --oauth" />
 
-Use the URL and sign-in instructions your company provides. Leave off `--oauth` for a private single-user endpoint. You can add the server later with `cully agent setup AGENT --mcp-url URL`. See [connect an agent](/agents).
+Use the URL and sign-in instructions your company provides. Leave off `--oauth` for a private single-user endpoint. You can add the server later with `cully setup --agent AGENT --mcp-url URL`. See [connect an agent](/agents).
 
 ## Build the CLI from source
 
@@ -50,4 +50,4 @@ The default installer downloads a prebuilt CLI from GitHub Releases and shows pr
 
 ## Check and adjust the installation
 
-Run `cully status` to see the advisor, agent integration, MCP connection and continuity hooks. If you installed the advisor first, `cully agent setup AGENT --mcp-url URL` adds the skill and server connection together. If only the server connection is missing, use `cully mcp add --agent AGENT --url URL`; add `--oauth` when that server requires sign-in. Cully keeps unrelated agent settings. For client-specific sign-in and commands, see [connect an agent](/agents).
+Run `cully status` to see the advisor, agent integration, MCP connection and continuity hooks. Run `cully setup` for the full laptop setup, or `cully setup --agent AGENT --mcp-url URL` to install integrations and start the advisor with an existing server. If only the server connection is missing, use `cully mcp add --agent AGENT --url URL`; add `--oauth` when that server requires sign-in. Cully keeps unrelated agent settings. For client-specific sign-in and commands, see [connect an agent](/agents).

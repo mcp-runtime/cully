@@ -6,7 +6,7 @@ description: Use Cully to inspect coding sessions, improve agent workflows, and 
 <!-- cully:skill:managed -->
 # Cully
 
-Use the installed `cully` CLI for local session guidance and the configured Cully MCP tools for durable records. The installer supplies continuity instructions at session start and checks for useful work at turn end. The connected agent makes memory calls with its own MCP identity; the local advisor does not hold OAuth credentials. Local guidance works without a server. Do not assume a particular URL or login flow.
+Use the installed `cully` CLI for local session guidance and the configured Cully MCP tools for durable records. `cully setup` installs the continuity hooks and skills and starts the advisor alongside the local memory services; use `--mcp-url URL` for an existing server. The connected agent makes memory calls with its own MCP identity; the local advisor does not hold OAuth credentials. Local guidance works without a server. Do not assume a particular URL or login flow.
 
 ## Guide the current work
 

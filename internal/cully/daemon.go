@@ -59,11 +59,14 @@ func RunDaemonStatus(w io.Writer) {
 		return
 	}
 	fmt.Fprintln(w, "cully advisor daemon not running")
-	fmt.Fprintln(w, "  run cully agent setup to start the advisor")
+	fmt.Fprintln(w, "  rerun cully setup with your original options to start the advisor")
 }
 
 // StartDaemonDetached launches the long-running advisor daemon in the background.
 func StartDaemonDetached() error {
+	if os.Getenv("CULLY_ANALYZE_DISABLE") == "1" {
+		return fmt.Errorf("CULLY_ANALYZE_DISABLE=1 disables the advisor; unset it to start the daemon")
+	}
 	if isDaemonRunning() {
 		return nil
 	}
