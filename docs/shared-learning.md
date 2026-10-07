@@ -15,13 +15,15 @@ In team mode, what one person's coding agent learns should help the rest of the 
 
 ## A new component beside the advisor
 
-Shared learning is a new part of Cully, the learning system. It sits next to the local advisor and the memory service and does a different job.
+Shared learning is a new part of Cully, the learning system. It sits next to the local advisor and the memory service and does a different job. Both the advisor and the learning system work for a single user or a team.
 
-| Component | Scope | Job |
-| --- | --- | --- |
-| Local advisor | One person, on their machine | Reads session signals and suggests improvements to instructions, skills and MCP setup. Works offline. |
-| Memory | One owner's records | Stores and finds notes through MCP. |
-| Learning system (new) | A team, on the server | Collects lessons people choose to share, groups repeated strategies, and works out which ones help whom. |
+| Component | Job | Single user | Team |
+| --- | --- | --- | --- |
+| Local advisor | Reads session signals and suggests improvements to instructions, skills and MCP setup. Works offline. | Tunes your own sessions. | Can also offer suggestions that came from teammates' learnings. |
+| Memory | Stores and finds notes through MCP. | Your private notes. | Your notes, plus notes teammates chose to share. |
+| Learning system (new) | Collects lessons, groups repeated strategies, and works out which ones help the next session. | Learns from your own sessions across projects and agents, and tips stay private to you. | Learns from lessons people choose to share and delivers them to teammates. |
+
+Scope is a mode, not a separate product. On a laptop with the default private stack, the learning loop runs for one owner and never leaves that owner's records. On a team server, the same loop also reads records marked `team` for the member's team. The code path is the same; the difference is which records the owner may read.
 
 The learning system builds on memory for storage and Mem0 for similarity, and it reuses the advisor's suggestion flow for delivery.
 
@@ -68,7 +70,7 @@ A shared learning is a small record built on the existing `learning` entry type:
 
 ## Delivery in slices
 
-**0. Learning loop.** Add the local learning loop to the daemon, with its job queue and the `CULLY_LEARN_DISABLE` switch. It works with no team server and no tips, so it can ship and be tested first.
+**0. Learning loop.** Add the local learning loop to the daemon, with its job queue and the `CULLY_LEARN_DISABLE` switch. It works for a single user with no team server, learning from that person's own notes, so it can ship and be tested first.
 
 **1. Share a learning.** `cully_log` accepts `visibility: team`. The Cully skill tells the agent to share a reusable lesson, with when it applies, and to keep ordinary work notes private.
 
