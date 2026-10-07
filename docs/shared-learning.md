@@ -13,6 +13,20 @@ Cully's records are private to their owner today. This page describes the design
 
 In team mode, what one person's coding agent learns should help the rest of the team. A teammate's agent finds something that works, Cully keeps it, and a different teammate's agent gets it at the start of a relevant session. The learning can be about anything: a debugging approach, a release step, a product decision, an ops check, a review habit or a way of prompting. A coding agent plus skills is the whole tool; Cully adds no workflow engine.
 
+## A new component beside the advisor
+
+Shared learning is a new part of Cully, the learning system. It sits next to the local advisor and the memory service and does a different job.
+
+| Component | Scope | Job |
+| --- | --- | --- |
+| Local advisor | One person, on their machine | Reads session signals and suggests improvements to instructions, skills and MCP setup. Works offline. |
+| Memory | One owner's records | Stores and finds notes through MCP. |
+| Learning system (new) | A team, on the server | Collects lessons people choose to share, groups repeated strategies, and works out which ones help whom. |
+
+The learning system builds on memory for storage and Mem0 for similarity, and it reuses the advisor's suggestion flow for delivery. It runs as a worker in the data service, like the Mem0 projection worker, and exposes its results through MCP tools.
+
+The advisor keeps its current boundary: it holds no OAuth token and works without a server. So team tips reach the advisor through the agent. The agent fetches them with its own MCP identity, and an installed hook saves them to the local suggestion store. The advisor then lists them in `cully suggestions` like any other suggestion, and they stay available offline once fetched.
+
 ## Principles
 
 1. **Private by default.** A note becomes visible to the team only when it is marked `team`. The author can edit or withdraw it at any time.
@@ -47,7 +61,7 @@ A shared learning is a small record built on the existing `learning` entry type:
 
 **3. Learn the strategy.** At the end of a session the agent writes a short strategy note: what it tried first, what worked and what it would change. The server groups similar notes by Mem0 similarity. When several people converge on an approach, it ranks that tip higher and keeps its sources.
 
-**4. Suggest it to a teammate.** The local advisor compares a member's own notes with the team's strategies. When a teammate uses one that this member does not, it suggests it in `cully suggestions`. Applying it goes through `cully apply --dry-run` and writes to a shared instruction or skill. Accept and dismiss feedback is stored and used for ranking. Each tip links to its source notes and the matching [optimization guide](/session-optimization).
+**4. Suggest it to a teammate.** The learning system compares a member's own notes with the team's strategies, using that member's own MCP identity. When a teammate uses one that this member does not, it returns a tip. A hook saves the tip locally, and the advisor lists it in `cully suggestions`. Applying it goes through `cully apply --dry-run` and writes to a shared instruction or skill. Accept and dismiss feedback is stored and used for ranking. Each tip links to its source notes and the matching [optimization guide](/session-optimization).
 
 Role skills such as dev, ops and product, incident grouping and webhook-started agent runs are optional layers that can follow once this loop works.
 
