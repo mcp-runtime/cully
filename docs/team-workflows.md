@@ -51,7 +51,7 @@ The goal is for what one person's agent learns to help others. For example, a de
 - Records are owner-scoped. The `company` section is a label for one person's notes. Coworkers cannot read each other's records, and the advisor does not send suggestions between people.
 - Cully does not schedule agents, assign work or trigger sessions. An agent acts when a person starts a session.
 
-Sharing what a team learns needs an explicit contract for who can see a note, how it is attributed, and how its author edits or withdraws it. The [roadmap](/roadmap) lists this as planned work. Until it ships, a team can still share a lesson the usual way: the person copies a note's text into the project's instructions or a skill that everyone's agents load.
+Sharing what a team learns needs an explicit contract for who can see a note, how it is attributed, and how its author edits or withdraws it. The [shared learning design](/shared-learning) describes how it would work, and the [roadmap](/roadmap) lists it as planned work. Until it ships, a team can still share a lesson the usual way: the person copies a note's text into the project's instructions or a skill that everyone's agents load.
 
 ## Next steps
 
