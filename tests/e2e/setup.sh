@@ -2,13 +2,13 @@
 # Run the documented laptop path on an isolated GitHub runner: install, setup,
 # connect Codex, use the MCP tools, and remove the disposable local stack.
 set -euo pipefail
-: "${RUNNER_TEMP:?customer setup E2E runs only on an isolated CI runner}"
+: "${RUNNER_TEMP:?setup E2E runs only on an isolated CI runner}"
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 original_gopath="$(go env GOPATH)"
 original_gocache="$(go env GOCACHE)"
 stack_tag="$(git -C "$repo_root" describe --tags --abbrev=0 --match 'v[0-9]*')"
-[[ "$stack_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "No stable Cully release tag for the customer setup test" >&2; exit 1; }
+[[ "$stack_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "No stable Cully release tag for the setup test" >&2; exit 1; }
 
 e2e_root="$(mktemp -d "$RUNNER_TEMP/cully-e2e.XXXXXX")"
 trap 'rm -rf -- "$e2e_root"' EXIT
@@ -84,7 +84,7 @@ cd "$HOME"
 "$cli" setup --prepare
 test -f "$HOME/.cully/self-hosted/config/.env"
 
-# Finish the same customer journey with the supported uninstall command.
+# Finish the same flow with the supported uninstall command.
 "$cli" uninstall --purge-data
 test ! -e "$cli"
 test ! -e "$CULLY_CONFIG_PATH"

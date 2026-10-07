@@ -13,7 +13,7 @@ import (
 )
 
 // TestContainerStack crosses the live MCP, data API, PostgreSQL and Mem0 services.
-// The customer setup workflow supplies a disposable stack; local unit runs skip it.
+// The setup workflow supplies a disposable stack; local unit runs skip it.
 func TestContainerStack(t *testing.T) {
 	endpoint := os.Getenv("CULLY_E2E_MCP_URL")
 	if endpoint == "" {

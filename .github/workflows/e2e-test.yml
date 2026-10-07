@@ -16,41 +16,6 @@ permissions:
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
-    env:
-      CULLY_DB_NAME: cully
-      CULLY_DB_USER: cully
-      CULLY_DB_PASSWORD: ci-only-password
-      CULLY_DATABASE_URL: postgres://cully:ci-only-password@db:5432/cully
-      CULLY_DATA_API_TOKEN: ci-only-token
-      CULLY_MCP_OWNER: ci-owner
-      CULLY_MEM0_DB_PASSWORD: ci-only-mem0-db-password
-      CULLY_MEM0_API_KEY: ci-only-mem0-api-key
-      CULLY_MEM0_JWT_SECRET: ci-only-mem0-jwt-secret
-      CULLY_E2E_MCP_URL: http://127.0.0.1:3393/mcp
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-      - name: Build service binaries
-        run: go build ./...
-      - name: Start disposable container stack
-        run: |
-          cd deploy/self-hosted
-          docker compose --env-file .env.example up -d --wait db mem0-db
-          docker compose --env-file .env.example --profile ops run --rm migrate
-          docker compose --env-file .env.example up -d --build --wait data-api mem0 mcp
-          curl --fail --retry 12 --retry-delay 2 --retry-all-errors http://127.0.0.1:3393/healthz
-      - name: MCP to data API to PostgreSQL lifecycle
-        run: go test ./tests/e2e -count=1 -v
-      - name: Stop disposable stack
-        if: always()
-        run: |
-          cd deploy/self-hosted
-          docker compose --env-file .env.example down -v --remove-orphans
-  customer-setup:
-    runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       CULLY_E2E_PUBLISHED_CLI: ${{ inputs.published_cli || false }}
@@ -62,5 +27,5 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Install and use Cully like a new Codex user
-        run: bash tests/e2e/customer-setup.sh
+      - name: Install, set up and use Cully end to end
+        run: bash tests/e2e/setup.sh
