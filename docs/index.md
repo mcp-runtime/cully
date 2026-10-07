@@ -24,6 +24,7 @@ For yourself, the default stack runs on your laptop with one stable owner and no
 | Save and find notes | [Memory](/memory) |
 | Use session guidance | [Local advisor](/advisor) |
 | Ship with a clear session trail and keep context focused | [Session optimization](/session-optimization) |
+| See how a team runs project work through agent sessions | [Run projects with agents](/team-workflows) |
 | Run the services on your laptop | [Self-hosting](/hosting) |
 | Connect to an existing server | [Connect an agent](/agents) |
 | Let multiple people sign in | [OAuth setup](/oauth) |

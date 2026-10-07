@@ -5,7 +5,7 @@ description: Run one Cully stack for multiple people with private, per-user memo
 
 # Deploy Cully for a team
 
-This guide is for the company ops team running Cully for several people. For your own laptop, use the [quickstart](/quickstart). In a team deployment, everyone connects to the same public MCP endpoint, signs in through the company's identity provider, and accesses only their own records. The `personal` and `company` sections organize one person's records; they do not make records visible to coworkers.
+This guide is for the company ops team running Cully for several people. For your own laptop, use the [quickstart](/quickstart). To see how a team uses agent sessions for project work, read [run projects with agents](/team-workflows). In a team deployment, everyone connects to the same public MCP endpoint, signs in through the company's identity provider, and accesses only their own records. The `personal` and `company` sections organize one person's records; they do not make records visible to coworkers.
 
 ```mermaid
 flowchart LR

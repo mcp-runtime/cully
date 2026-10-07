@@ -48,7 +48,8 @@ export default withMermaid(defineConfig({
           { text: 'Memory', link: '/memory' },
           { text: 'Local advisor', link: '/advisor' },
           { text: 'Keep sessions focused', link: '/session-optimization' },
-          { text: 'Connect an agent', link: '/agents' }
+          { text: 'Connect an agent', link: '/agents' },
+          { text: 'Run projects with agents', link: '/team-workflows' }
         ]
       },
       {
