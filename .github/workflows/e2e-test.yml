@@ -26,7 +26,7 @@ jobs:
       CULLY_MEM0_DB_PASSWORD: ci-only-mem0-db-password
       CULLY_MEM0_API_KEY: ci-only-mem0-api-key
       CULLY_MEM0_JWT_SECRET: ci-only-mem0-jwt-secret
-      CULLY_E2E_MCP_URL: http://127.0.0.1:8080/mcp
+      CULLY_E2E_MCP_URL: http://127.0.0.1:3393/mcp
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -41,7 +41,7 @@ jobs:
           docker compose --env-file .env.example up -d --wait db mem0-db
           docker compose --env-file .env.example --profile ops run --rm migrate
           docker compose --env-file .env.example up -d --build --wait data-api mem0 mcp
-          curl --fail --retry 12 --retry-delay 2 --retry-all-errors http://127.0.0.1:8080/healthz
+          curl --fail --retry 12 --retry-delay 2 --retry-all-errors http://127.0.0.1:3393/healthz
       - name: MCP to data API to PostgreSQL lifecycle
         run: go test ./tests/e2e -count=1 -v
       - name: Stop disposable stack

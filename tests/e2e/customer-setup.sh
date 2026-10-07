@@ -27,7 +27,7 @@ export GOPATH="$original_gopath"
 export GOCACHE="$original_gocache"
 export PATH="$CODEX_HOME/bin:$PATH"
 export SHELL=/bin/bash
-export CULLY_E2E_MCP_URL=http://127.0.0.1:8080/mcp
+export CULLY_E2E_MCP_URL=http://127.0.0.1:3393/mcp
 cli="$CODEX_HOME/bin/cully"
 stack_dir="$HOME/.cully/self-hosted/releases/$stack_tag/deploy/self-hosted"
 
@@ -66,11 +66,11 @@ fi
 # This must work from a clean home without running --prepare first. The CLI
 # downloads the matching public release archive and runs its setup script.
 "$cli" setup
-curl --fail --retry 12 --retry-delay 2 --retry-all-errors http://127.0.0.1:8080/healthz
+curl --fail --retry 12 --retry-delay 2 --retry-all-errors http://127.0.0.1:3393/healthz
 test -f "$CULLY_CONFIG_PATH"
 test -f "$CODEX_HOME/skills/cully/SKILL.md"
 grep -Fq '[mcp_servers.cully]' "$CODEX_HOME/config.toml"
-grep -Fq 'http://127.0.0.1:8080/mcp' "$CODEX_HOME/config.toml"
+grep -Fq 'http://127.0.0.1:3393/mcp' "$CODEX_HOME/config.toml"
 "$cli" status | tee "$e2e_root/status"
 grep -Fq 'cully advisor daemon running' "$e2e_root/status"
 test -f "$HOME/AGENTS.md"
