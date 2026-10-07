@@ -227,6 +227,8 @@ func runInternal(args []string) error {
 		cully.RunWorker(args[1], args[2], args[3])
 	case "self-hosted-credentials":
 		return runSelfHostCredentials(args[1:])
+	case "self-hosted-ports":
+		return runSelfHostPorts(args[1:])
 	default:
 		return fmt.Errorf("unknown internal action %q", args[0])
 	}

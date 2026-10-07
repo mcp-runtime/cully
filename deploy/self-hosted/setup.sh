@@ -71,6 +71,10 @@ compose() {
   esac
 }
 
+say 'Choosing free local ports (MCP prefers 3393; other services use uncommon ports)'
+running=""
+if [ -n "$(compose ps -q mcp 2>/dev/null)" ]; then running="--running"; fi
+"$cli" _internal self-hosted-ports ensure $running
 say '[3/7] Checking Docker Compose configuration'
 compose config --quiet
 say '[4/7] Pulling images if needed and starting PostgreSQL databases'

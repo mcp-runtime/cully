@@ -7,13 +7,15 @@ services:
       POSTGRES_DB: ${CULLY_DB_NAME:?set CULLY_DB_NAME}
       POSTGRES_USER: ${CULLY_DB_USER:?set CULLY_DB_USER}
       POSTGRES_PASSWORD: ${CULLY_DB_PASSWORD:?set CULLY_DB_PASSWORD}
+    ports:
+      - 127.0.0.1:${CULLY_DB_PORT:-55393}:5432
     volumes: [db-data:/var/lib/postgresql/data]
     healthcheck:
       test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 10s
       timeout: 3s
       retries: 5
-    networks: [private]
+    networks: [private, local]
   migrate:
     profiles: [ops]
     build:
@@ -41,13 +43,14 @@ services:
         condition: service_healthy
       mem0:
         condition: service_healthy
-    expose: ["8083"]
+    ports:
+      - 127.0.0.1:${CULLY_DATA_API_PORT:-43393}:8083
     healthcheck:
       test: [CMD, /cully-data, health]
       interval: 20s
       timeout: 5s
       retries: 5
-    networks: [private]
+    networks: [private, local]
   mcp:
     build:
       context: ../..
@@ -66,7 +69,7 @@ services:
       data-api:
         condition: service_healthy
     ports:
-      - 127.0.0.1:${CULLY_MCP_PORT:-8080}:8080
+      - 127.0.0.1:${CULLY_MCP_PORT:-3393}:8080
     networks: [private, edge]
   mem0-db:
     image: pgvector/pgvector:pg17
@@ -75,6 +78,8 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_USER: mem0
       POSTGRES_PASSWORD: ${CULLY_MEM0_DB_PASSWORD:?set CULLY_MEM0_DB_PASSWORD}
+    ports:
+      - 127.0.0.1:${CULLY_MEM0_DB_PORT:-56393}:5432
     volumes:
       - mem0-data:/var/lib/postgresql/data
       - ./mem0-init-db.sql:/docker-entrypoint-initdb.d/10-mem0-app.sql:ro
@@ -83,7 +88,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
-    networks: [private]
+    networks: [private, local]
   mem0:
     build:
       context: ../..
@@ -103,6 +108,8 @@ services:
       JWT_SECRET: ${CULLY_MEM0_JWT_SECRET:?set CULLY_MEM0_JWT_SECRET}
       AUTH_DISABLED: "false"
       MEM0_TELEMETRY: "false"
+    ports:
+      - 127.0.0.1:${CULLY_MEM0_PORT:-53393}:8000
     volumes: [mem0-history:/app/history]
     depends_on:
       mem0-db:
@@ -163,4 +170,6 @@ secrets:
 networks:
   private:
     internal: true
+  # Only loopback-published services join this network; Caddy and MCP Auth cannot reach them.
+  local:
   edge:
