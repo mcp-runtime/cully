@@ -13,6 +13,9 @@ func draftLearning(t *Team, actor string, p *Project, v Input, now time.Time) (R
 	if task == nil || task.ProjectID != p.ID {
 		return out, "", ErrForbidden
 	}
+	if task.State != "done" {
+		return out, "", ErrConflict
+	}
 	if err := required(v.Lesson, v.AppliesWhen, v.Limitations); err != nil {
 		return out, "", err
 	}

@@ -85,8 +85,6 @@ export default withMermaid(defineConfig({
           { text: 'Development', link: '/development' },
           { text: 'Current capabilities', link: '/capabilities' },
           { text: 'Product vision', link: '/product-direction' },
-          { text: 'Team workspace design', link: '/team-workspace' },
-          { text: 'Shared learning design', link: '/shared-learning' },
           { text: 'Roadmap', link: '/roadmap' },
           { text: 'Changelog ↗', link: 'https://github.com/mcp-runtime/cully/blob/main/CHANGELOG.md' }
         ]

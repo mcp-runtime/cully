@@ -36,8 +36,7 @@ Works across agents. Learns across sessions.
 | [Advisor](/advisor) | A second pair of eyes that warns and suggests while you work |
 | [Project memory](/memory) | Decisions and results that outlive the session |
 | [Agent integration](/agents) | How Claude Code, Codex, Cursor and others connect |
-| [Team workspace](/team-workflows) | Project access, human-owned tasks, portable checkpoints and review evidence |
-| [Shared learning](/shared-learning) | Private drafts, explicit publication and maintained playbooks |
+| [Team workspace](/team-workflows) | Project access, human-owned tasks, portable checkpoints, review evidence and published lessons |
 
 ## Run Cully
 
@@ -55,4 +54,4 @@ For project work, see [development](/development), the [roadmap](/roadmap) and t
 
 ## Teams and project work
 
-A [team deployment](/team-deployment) provides private user memory alongside explicitly authorized project work. Read [work across people and agents](/team-workflows) to create tasks, continue from checkpoints, review evidence and publish lessons. The [team workspace design](/team-workspace) separates this manual-launch implementation from further proposals.
+A [team deployment](/team-deployment) provides private user memory alongside explicitly authorized project work. Read [work across people and agents](/team-workflows) to create tasks, continue from checkpoints, review evidence and publish lessons. [Product vision](/product-direction) separates this manual-launch implementation from further proposals.

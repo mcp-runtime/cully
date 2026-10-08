@@ -56,7 +56,10 @@ func (t *Team) Apply(actor string, v Input, now time.Time) (Result, *Event, erro
 	if err != nil || !op.write {
 		return out, nil, err
 	}
-	projectID := v.ProjectID
+	projectID := ""
+	if op.scope == projectScope || op.scope == membershipScope {
+		projectID = v.ProjectID
+	}
 	if out.Project != nil {
 		projectID = out.Project.ID
 	}

@@ -96,9 +96,24 @@ Work that builds on the journal and needs moderate additions.
 | Complexity | Low to medium. |
 | Differentiation | Medium. |
 
-## Team workspace implementation and target
+## Team workspace target
 
-The [team workspace design](/team-workspace) distinguishes the implemented manual workflow from future managed execution, browser/tracker integration, configurable review policies, semantic shared retrieval and measured improvements. Existing private sessions/task links remain owner-scoped. Team work uses separate records and explicit authorization; Cully does not intercept model traffic.
+The [manual-launch workflow](/team-workflows) is the shipped Team slice. Existing private sessions and task links remain owner-scoped. Team work uses separate records and explicit authorization; Cully does not intercept model traffic.
+
+### Demo and commercial validation
+
+Demonstrate one task: one developer starts it, another continues in a different agent, the reviewer sees missing evidence, the checks are supplied, and an accepted lesson improves a later task. Include a private note that never appears to the teammate and a membership removal that stops new reads.
+
+Measure time to first useful action after handoff, repeated investigation, time waiting for review, reopened tasks and playbook usefulness. Compare like-for-like work with and without Cully. Show counts and denominators; no arbitrary productivity score. Validate willingness to adopt before fixing packaging or pricing.
+
+### Planned team stages
+
+| Stage | Deliverable | Gate |
+| --- | --- | --- |
+| Managed execution | Capability-aware adapters, isolated worktrees, bounded runs, cancellation and recovery | Duplicate events do not duplicate runs; unsupported controls are explicit |
+| Shared learning extensions | Team-wide visibility, semantic shared retrieval, ranking and optional background draft suggestions | Private notes never enter shared retrieval; edits/withdrawals invalidate derived tips |
+| Browser and trackers | Web board/inbox and GitHub/Linear-style artifact sync | Signed events, delivery deduplication and external permission checks before bidirectional writes |
+| Measured improvement | Team workflow suggestions and agent comparisons from verified outcomes | Show cohort size and confounders before any automatic routing |
 
 ## Later
 
@@ -114,6 +129,17 @@ Ideas that need new data, new instrumentation or a lot of history first.
 | Missing | Classifying work without reading prompts and collecting enough verified outcomes to support useful patterns. |
 | Complexity | High. |
 | Differentiation | High, if it is accurate. |
+
+### Shared learning workers
+
+| | |
+| --- | --- |
+| User problem | Useful lessons stay private drafts or drown in a long project history. |
+| Experience | Opt-in preparation suggests draft lessons and ranks currently authorized tips; publishing and playbook adoption stay explicit. |
+| Reuses | Project lessons, playbooks and live authorization checks from Team mode. |
+| Missing | Bounded job IDs, cancellation, membership-aware caches and Mem0 hydration that never exposes private notes. |
+| Complexity | High. |
+| Differentiation | High if withdrawal and access removal stay correct. |
 
 ### Agent performance intelligence
 

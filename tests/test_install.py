@@ -74,7 +74,7 @@ cp "$TEST_ROOT/cully" "$GOBIN/cully"
                                     "https://example.com/mcp", "--oauth")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.root / "setup").read_text().strip(),
-                         "setup --agent codex --mcp-url https://example.com/mcp --oauth")
+                         "setup --mcp-url https://example.com/mcp --agent codex --oauth")
         self.assertFalse((self.root / "go-call").exists())
         calls = (self.root / "curl-calls").read_text()
         self.assertIn("--progress-bar --connect-timeout 10 --max-time 120", calls)
@@ -121,8 +121,9 @@ cp "$TEST_ROOT/cully" "$GOBIN/cully"
         self.assertIn("cannot change the PATH or command cache", result.stdout)
         self.assertIn('export PATH="$HOME/.local/bin:$PATH"; hash -r', result.stdout)
         self.assertIn("command -v cully; cully version", result.stdout)
-        self.assertIn("cully setup --agent codex --all", result.stdout)
-        self.assertIn("--mcp-url URL", result.stdout)
+        self.assertIn("cully setup --all", result.stdout)
+        self.assertIn("cully setup --mcp-url URL", result.stdout)
+        self.assertNotIn("cully setup --agent codex --all", result.stdout)
         self.assertFalse((self.root / "setup").exists())
         self.assertEqual((self.root / "daemon-call").read_text().strip(), "_internal stop-daemon")
 
@@ -231,11 +232,11 @@ cp "$TEST_ROOT/cully" "$GOBIN/cully"
         self.assertEqual(link.readlink(), self.root / ".local" / "bin" / "cully")
         self.assertEqual(link.read_bytes(), self.cli.read_bytes())
 
-    def test_remote_setup_without_agent_explicitly_selects_codex(self):
+    def test_remote_setup_without_agent_lets_setup_detect(self):
         result = self.run_installer("--mcp-url", "https://example.com/mcp")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.root / "setup").read_text().strip(),
-                         "setup --agent codex --mcp-url https://example.com/mcp")
+                         "setup --mcp-url https://example.com/mcp")
 
     def test_preserves_shell_settings_and_prioritizes_canonical_path(self):
         profile = self.root / ".zshrc"

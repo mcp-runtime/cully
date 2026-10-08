@@ -185,10 +185,31 @@ func TestDispatchPreservesAccessAndAuditBoundaries(t *testing.T) {
 	}
 	for _, input := range []Input{
 		{Action: "team_member", TeamID: team.ID, Principal: "lead", Role: "remove"},
+		{Action: "team_member", TeamID: team.ID, Principal: "next", Role: "remove"},
 		{Action: "project_member", TeamID: team.ID, ProjectID: p.ID, Principal: "next", Role: "remove"},
 	} {
 		if _, event, err := team.Apply("lead", input, now); !errors.Is(err, ErrInvalid) || event != nil {
 			t.Fatalf("removed the last responsible role: %s %v", input.Action, err)
 		}
+	}
+	_, event, err = team.Apply("lead", Input{Action: "team_member", TeamID: team.ID, Principal: "viewer", Role: "remove"}, now)
+	if err != nil || event == nil || event.ProjectID != "" || event.TargetID != "viewer" || team.Members["viewer"] != "" {
+		t.Fatal("team membership mutation polluted project audit scope")
+	}
+}
+
+func TestCancelledDependencyBlocksAndRejectsDeadlock(t *testing.T) {
+	team, p, task, now := fixture(t)
+	apply(t, team, p, "dev", Input{Action: "task_claim", TaskID: task.ID, Version: 1, Agent: "claude"}, now)
+	dep := apply(t, team, p, "dev", Input{Action: "task_create", Name: "Follow-up", Criteria: []string{"Done"}, Dependencies: []string{task.ID}}, now).Task
+	if _, _, err := team.Apply("dev", Input{Action: "task_state", TeamID: team.ID, ProjectID: p.ID, TaskID: task.ID, Version: 2, State: "cancelled"}, now); !errors.Is(err, ErrConflict) {
+		t.Fatal("cancelled a dependency that still has dependents")
+	}
+	apply(t, team, p, "dev", Input{Action: "task_state", TaskID: dep.ID, Version: 1, State: "cancelled"}, now)
+	if _, _, err := team.Apply("dev", Input{Action: "task_create", TeamID: team.ID, ProjectID: p.ID, Name: "Blocked", Criteria: []string{"Done"}, Dependencies: []string{dep.ID}}, now); !errors.Is(err, ErrInvalid) {
+		t.Fatal("accepted a cancelled dependency")
+	}
+	if _, _, err := team.Apply("dev", Input{Action: "learning_draft", TeamID: team.ID, ProjectID: p.ID, TaskID: task.ID, Lesson: "too early", AppliesWhen: "now", Limitations: "none"}, now); !errors.Is(err, ErrConflict) {
+		t.Fatal("drafted a lesson before the task was done")
 	}
 }

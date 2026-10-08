@@ -239,13 +239,17 @@ say 'If a different version still appears, run type -a cully to check other path
 say "Expected binary: $BIN_DIR/cully; expected version: $new_ver"
 say 'Only ~/.local/bin/cully contains the installed binary; agent symlinks use that same version on every upgrade.'
 if [ -n "$mcp_url" ]; then
-  setup_agent=${agent:-codex}
-  set -- setup --agent "$setup_agent" --mcp-url "$mcp_url"
+  set -- setup --mcp-url "$mcp_url"
+  [ -z "$agent" ] || set -- "$@" --agent "$agent"
   [ "$oauth" = false ] || set -- "$@" --oauth
   say 'Setting up coding agents and the advisor with your existing MCP server'
   "$BIN_DIR/cully" "$@"
 else
-  setup_agent=${agent:-codex}
-  say "CLI installed. For the full local stack, start Docker and run: cully setup --agent $setup_agent --all"
-  say "For a deployed stack, run: cully setup --agent $setup_agent --mcp-url URL"
+  if [ -n "$agent" ]; then
+    say "CLI installed. For the full local stack, start Docker and run: cully setup --agent $agent --all"
+    say "For a deployed stack, run: cully setup --agent $agent --mcp-url URL"
+  else
+    say 'CLI installed. For the full local stack, start Docker and run: cully setup --all'
+    say 'For a deployed stack, run: cully setup --mcp-url URL'
+  fi
 fi

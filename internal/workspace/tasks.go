@@ -21,12 +21,15 @@ func createTask(t *Team, actor string, p *Project, v Input, now time.Time) (Resu
 			return out, "", ErrInvalid
 		}
 	}
-	// Dependencies only reference existing tasks. They cannot be edited,
-	// so a newly created task cannot introduce a dependency cycle.
+	// Dependencies only reference existing non-cancelled tasks. They cannot
+	// be edited, so a newly created task cannot introduce a dependency cycle.
 	for _, id := range v.Dependencies {
 		dep := t.Tasks[id]
 		if dep == nil || dep.ProjectID != p.ID {
 			return out, "", ErrForbidden
+		}
+		if dep.State == "cancelled" {
+			return out, "", ErrInvalid
 		}
 	}
 	task := &Task{ID: uuid.NewString(), ProjectID: p.ID, Name: v.Name, Criteria: v.Criteria, Dependencies: v.Dependencies, State: "ready", Version: 1, UpdatedAt: now, Attempts: []Attempt{}, Evidence: []Evidence{}}
@@ -55,8 +58,14 @@ func mutateTask(t *Team, actor string, p *Project, v Input, now time.Time) (Resu
 		err = claimTask(t, actor, task, v, now)
 	case "task_approve":
 		err = approveTask(actor, p, task, v, now)
+	case "task_state":
+		if v.State == "cancelled" && task.State == "ready" {
+			err = cancelTask(t, task)
+		} else {
+			err = updateOwnedTask(t, actor, p, task, v, now)
+		}
 	default:
-		err = updateOwnedTask(actor, p, task, v, now)
+		err = updateOwnedTask(t, actor, p, task, v, now)
 	}
 	if err != nil {
 		return out, "", err
@@ -78,7 +87,8 @@ func claimTask(t *Team, actor string, task *Task, v Input, now time.Time) error 
 		}
 	}
 	for _, id := range task.Dependencies {
-		if t.Tasks[id].State != "done" {
+		dep := t.Tasks[id]
+		if dep == nil || dep.State != "done" {
 			return ErrConflict
 		}
 	}
@@ -89,7 +99,23 @@ func claimTask(t *Team, actor string, task *Task, v Input, now time.Time) error 
 
 	return nil
 }
-func updateOwnedTask(actor string, p *Project, task *Task, v Input, now time.Time) error {
+func cancelTask(t *Team, task *Task) error {
+	for _, other := range t.Tasks {
+		if other == nil || other.ID == task.ID || other.State == "cancelled" || other.State == "done" {
+			continue
+		}
+		if slices.Contains(other.Dependencies, task.ID) {
+			return ErrConflict
+		}
+	}
+	task.Owner = ""
+	task.State = "cancelled"
+	task.NextStep = ""
+	task.Evidence = nil
+	return nil
+}
+
+func updateOwnedTask(t *Team, actor string, p *Project, task *Task, v Input, now time.Time) error {
 	if task.Owner != actor {
 		return ErrForbidden
 	}
@@ -120,6 +146,9 @@ func updateOwnedTask(actor string, p *Project, task *Task, v Input, now time.Tim
 	case "task_state":
 		if !slices.Contains([]string{"active", "blocked", "cancelled"}, v.State) || (v.State == "blocked" && required(v.NextStep) != nil) {
 			return ErrInvalid
+		}
+		if v.State == "cancelled" {
+			return cancelTask(t, task)
 		}
 		task.State = v.State
 		task.NextStep = v.NextStep

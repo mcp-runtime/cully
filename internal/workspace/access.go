@@ -49,9 +49,23 @@ func manageTeamMember(t *Team, actor string, p *Project, v Input, now time.Time)
 		return out, "", ErrInvalid
 	}
 	if v.Role == "remove" {
+		for _, project := range t.Projects {
+			if project.Members[v.Principal] != "maintainer" {
+				continue
+			}
+			n := 0
+			for _, role := range project.Members {
+				if role == "maintainer" {
+					n++
+				}
+			}
+			if n <= 1 {
+				return out, "", fmt.Errorf("%w: keep at least one maintainer on each project", ErrInvalid)
+			}
+		}
 		delete(t.Members, v.Principal)
-		for _, p := range t.Projects {
-			delete(p.Members, v.Principal)
+		for _, project := range t.Projects {
+			delete(project.Members, v.Principal)
 		}
 	} else {
 		t.Members[v.Principal] = v.Role

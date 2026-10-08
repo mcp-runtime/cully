@@ -36,16 +36,32 @@ func listTasks(t *Team, actor string, p *Project, v Input, now time.Time) (Resul
 func listLessons(t *Team, actor string, p *Project, v Input, now time.Time) (Result, string, error) {
 	out := Result{TeamID: t.ID}
 
+	var published, drafts []Learning
 	for _, l := range t.Learnings {
 		task := t.Tasks[l.TaskID]
 		current := task != nil && task.ProjectID == p.ID && task.Version == l.TaskVersion
-		if l.ProjectID == p.ID && ((l.Published && current) || l.Author == actor) && (v.Query == "" || strings.Contains(strings.ToLower(l.Lesson+" "+l.AppliesWhen), strings.ToLower(v.Query))) {
-			out.Learnings = append(out.Learnings, *l)
+		if l.ProjectID != p.ID || (v.Query != "" && !strings.Contains(strings.ToLower(l.Lesson+" "+l.AppliesWhen), strings.ToLower(v.Query))) {
+			continue
+		}
+		switch {
+		case l.Published && current:
+			published = append(published, *l)
+		case l.Author == actor:
+			drafts = append(drafts, *l)
 		}
 	}
-	sort.Slice(out.Learnings, func(i, j int) bool { return out.Learnings[i].ID < out.Learnings[j].ID })
+	sort.Slice(published, func(i, j int) bool { return published[i].ID < published[j].ID })
+	sort.Slice(drafts, func(i, j int) bool { return drafts[i].ID < drafts[j].ID })
+	out.Learnings = published
 	if len(out.Learnings) > 3 {
 		out.Learnings = out.Learnings[:3]
+	} else {
+		for _, draft := range drafts {
+			if len(out.Learnings) >= 3 {
+				break
+			}
+			out.Learnings = append(out.Learnings, draft)
+		}
 	}
 	for _, book := range t.Playbooks {
 		l := t.Learnings[book.LearningID]

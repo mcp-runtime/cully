@@ -25,7 +25,7 @@ These solo session/task links stay separate from shared workspace tasks. Local h
 ## The team workflow
 
 ::: info Manual launch, explicit sharing
-CLI/MCP operations implement this workflow. Managed execution, automatic journal checkpoints, a browser board and tracker integration remain planned. The [team workspace design](/team-workspace) describes the broader target.
+CLI/MCP operations implement this workflow. Managed execution, automatic journal checkpoints, a browser board and tracker integration remain planned. See [product vision](/product-direction) and the [roadmap](/roadmap).
 :::
 
 1. A lead creates a project task with a clear outcome and acceptance criteria.
@@ -47,7 +47,7 @@ Apply migration 006 and configure OAuth as described in [team deployment](/team-
 4. Admins create projects with `project_create`, `team_id`, `name` and HTTPS `repository`. Its UUID is the identity; its creator becomes a maintainer.
 5. A team admin or project maintainer grants project access with `project_member`, `team_id`, `project_id`, `principal` and `role`: `maintainer`, `member`, `viewer` or `remove`.
 
-Viewers read; members create/work on tasks; maintainers approve and adopt playbooks. Team admins manage membership, but need an explicit project role for content reads. `team_member` with `role: "remove"` removes project grants too. Subsequent server access is denied; previously exported information cannot be recalled.
+Viewers read; members create/work on tasks; maintainers approve and adopt playbooks. Team admins manage membership, but need an explicit project role for content reads. `team_member` with `role: "remove"` removes project grants too, and is rejected when that person is the sole maintainer of any project. Subsequent server access is denied; previously exported information cannot be recalled.
 
 ## Workspace actions
 
@@ -58,14 +58,14 @@ Every project action supplies `team_id` and `project_id`. Task mutations supply 
 | `task_create` | `name`, nonempty `criteria`, optional existing-project task `dependencies` | Ready task at version 1 |
 | `task_claim` | Current `version`, `agent`, optional opaque `session_ref` | Human ownership, attempt and 30-minute lease |
 | `task_checkpoint` | Current `version`, `checkpoint`, `next_step`, optional `branch`, `session_ref` | Selected portable context and refreshed lease |
-| `task_state` | Current `version`, `state` (`active`, `blocked`, `cancelled`); `next_step` for blockers | Explicit state change |
+| `task_state` | Current `version`, `state` (`active`, `blocked`, `cancelled`); `next_step` for blockers | Explicit state change; ready tasks may be cancelled by any project writer |
 | `task_release` | Current `version`; checkpoint/next step already present | Ready for another person's explicit claim |
 | `task_submit` | Current `version`, `revision`, HTTPS `artifact`, available `evidence` | Proposed result in review, including gaps or failures |
 | `task_approve` | Current `version`, exact submitted `revision` | Noncontributing maintainer accepts delivery |
 
 Read actions are `projects` (team only), `board`, `inbox`, `task_get` and `lessons`. The inbox lists blockers, reviews and stale active work. `task_get` is the handoff/review packet: selected checkpoint, next action, branch, artifact and evidence. It uploads no conversation, source files or uncommitted work. Reconstruct from repository/branch references.
 
-Concurrent claims have one winner. Dependencies refer to existing tasks and cannot be edited, preventing cycles; claiming requires all predecessors done. Ready means unclaimed, so check dependency readiness. Lease expiry marks work stale, without declaring failure or stopping an agent. Reclaim explicitly after checking the previous person is no longer working; their old attempt loses mutation access. An expired review task can only be reclaimed by its owner. Done/cancelled tasks are immutable in this version.
+Concurrent claims have one winner. Dependencies refer to existing non-cancelled tasks and cannot be edited, preventing cycles; claiming requires all predecessors done. Cancelling a task that still has open dependents is rejected. Ready means unclaimed, so check dependency readiness. Lease expiry marks work stale, without declaring failure or stopping an agent. Reclaim explicitly after checking the previous person is no longer working; their old attempt loses mutation access. An expired review task can only be reclaimed by its owner. Done/cancelled tasks are immutable in this version.
 
 ## Review evidence
 
@@ -75,13 +75,13 @@ A maintainer who contributed to any attempt cannot approve the task. Approval ch
 
 ## Draft, publish and reuse
 
-`learning_draft` takes project `task_id`, `lesson`, `applies_when` and `limitations`. The draft belongs to its author and records source task version/artifact revision. `learning_publish` explicitly shares it with the project using `learning_id` and current learning `version`.
+`learning_draft` takes a completed project `task_id`, `lesson`, `applies_when` and `limitations`. The draft belongs to its author and records source task version/artifact revision. `learning_publish` explicitly shares it with the project using `learning_id` and current learning `version`.
 
-`lessons` returns up to three lessons and three active playbooks. Optional `query` matches text case-insensitively; shared lessons do not enter Mem0. Members see current published lessons; authors also see their private/stale drafts. Source-task changes hide stale published tips from other members.
+`lessons` returns up to three lessons and three active playbooks. Published lessons fill the lesson slots first; authors may see their own drafts in any remaining slots. Optional `query` matches text case-insensitively; shared lessons do not enter Mem0. Source-task changes hide stale published tips from other members.
 
 Authors use `learning_edit` with replacement lesson/applicability/limitations, `learning_unshare` or `learning_delete`, with the current learning version. Editing refreshes the task reference and makes the lesson private again. Dependent playbooks stop appearing. Maintainers use `playbook_adopt` with published learning ID/version and nonempty `steps`; the source task must be completed and current. Adoption creates versioned guidance without editing instruction files.
 
-Team-wide visibility, automated drafting/ranking, playbook editing/archive controls and semantic shared retrieval remain planned. See [shared learning](/shared-learning).
+Team-wide visibility, automated drafting/ranking, playbook editing/archive controls and semantic shared retrieval remain planned. See [product vision](/product-direction#later).
 
 ## Use the CLI
 
@@ -95,4 +95,4 @@ The CLI selects the read/write tool and prints JSON. It never persists tokens or
 
 ## Where to start
 
-Use [quickstart](/quickstart) for a private installation, or [team deployment](/team-deployment) for shared hosting with separate user identities. Review [team workspace design](/team-workspace) for project coordination and [shared learning design](/shared-learning) for publication and playbooks. The [roadmap](/roadmap) separates current work from proposed stages.
+Use [quickstart](/quickstart) for a private installation, or [team deployment](/team-deployment) for shared hosting with separate user identities. The [roadmap](/roadmap) and [product vision](/product-direction) separate current work from proposed stages.

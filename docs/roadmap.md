@@ -8,7 +8,7 @@ Cully has two modes: [Solo](/solo), a copilot for your coding agent and work env
 
 The [manual-launch workflow](/team-workflows) implements project roles, atomic claims, task lifecycle/dependencies, board/inbox, checkpoints, reported evidence review, project lesson publication and playbook adoption. Private memory remains separate. Tests cover concurrent claims, access removal, private drafts, stale versions and self-approval.
 
-Next, run the [two-person cross-agent demo](/team-workspace#demo-and-commercial-validation) with real signed-in clients, and measure handoff/review usefulness. Add web views, configurable leases/review policies, playbook maintenance, authorized semantic projections and normalized storage as needs emerge. Managed execution remains gated on adapter-enforced capabilities; ranking and comparisons require measured outcomes. These additions have no release dates.
+Next, run the [two-person cross-agent demo](/product-direction#demo-and-commercial-validation) with real signed-in clients, and measure handoff/review usefulness. Add web views, configurable leases/review policies, playbook maintenance, authorized semantic projections and normalized storage as needs emerge. Managed execution remains gated on adapter-enforced capabilities; ranking and comparisons require measured outcomes. See [planned team stages](/product-direction#planned-team-stages). These additions have no release dates.
 
 ## Planned work
 
