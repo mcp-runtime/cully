@@ -22,7 +22,7 @@ class InstallerTest(unittest.TestCase):
         self.cli = self.root / "cully"
         self.cli.write_text('''#!/bin/sh
 case "$1" in
-  version) echo v-test ;;
+  version) echo 'cully v-test' ;;
   _internal) printf '%s\\n' "$*" > "$TEST_ROOT/daemon-call" ;;
   setup) printf '%s\\n' "$*" > "$TEST_ROOT/setup"; printf '%s\\n' "$PATH" > "$TEST_ROOT/setup-path" ;;
 esac
@@ -54,10 +54,10 @@ cp "$TEST_ROOT/$source_file" "$destination"
 printf '%s\\n' "$*" > "$TEST_ROOT/go-call"
 cp "$TEST_ROOT/cully" "$GOBIN/cully"
 ''')
-        self.env = dict(os.environ, HOME=str(self.root), TEST_ROOT=str(self.root),
+        self.env = dict(os.environ, TEST_ROOT=str(self.root), HOME=str(self.root), SHELL="/bin/zsh",
                         CLAUDE_CONFIG_DIR=str(self.root / "claude"),
-                        CODEX_HOME=str(self.root / "codex"),
-                        CURSOR_CONFIG_DIR=str(self.root / "cursor"),
+                        CODEX_HOME=str(self.root / ".codex"),
+                        CURSOR_CONFIG_DIR=str(self.root / ".cursor"),
                         PATH=str(self.bin) + os.pathsep + os.environ["PATH"])
 
     def stub(self, name, body):
@@ -74,7 +74,7 @@ cp "$TEST_ROOT/cully" "$GOBIN/cully"
                                     "https://example.com/mcp", "--oauth")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.root / "setup").read_text().strip(),
-                         "setup --mcp-url https://example.com/mcp --agent codex --oauth")
+                         "setup --agent codex --mcp-url https://example.com/mcp --oauth")
         self.assertFalse((self.root / "go-call").exists())
         calls = (self.root / "curl-calls").read_text()
         self.assertIn("--progress-bar --connect-timeout 10 --max-time 120", calls)
@@ -100,66 +100,162 @@ cp "$TEST_ROOT/cully" "$GOBIN/cully"
                                  f"install -v github.com/mcp-runtime/cully/cmd/cully@{ref}")
                 self.assertFalse((self.root / "curl-calls").exists())
 
+    def old_binary(self, path, version="0.3.0"):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"#!/bin/sh\necho 'cully {version}'\n")
+        path.chmod(0o755)
+        return path
+
+    def test_bare_install_upgrades_selected_old_copy_and_explains_shell(self):
+        old = self.old_binary(self.root / ".claude" / "bin" / "cully")
+        self.env["PATH"] = str(old.parent) + os.pathsep + self.env["PATH"]
+        result = self.run_installer()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(old.read_bytes(), self.cli.read_bytes())
+        installed = self.root / ".local" / "bin" / "cully"
+        self.assertEqual(installed.read_bytes(), self.cli.read_bytes())
+        self.assertIn(f"Current PATH selects: {old} (cully 0.3.0)", result.stdout)
+        self.assertTrue(old.is_symlink())
+        self.assertEqual(old.readlink(), installed)
+        self.assertIn(f"{old} -> {installed}", result.stdout)
+        self.assertIn("cannot change the PATH or command cache", result.stdout)
+        self.assertIn('export PATH="$HOME/.local/bin:$PATH"; hash -r', result.stdout)
+        self.assertIn("command -v cully; cully version", result.stdout)
+        self.assertIn("cully setup --agent codex --all", result.stdout)
+        self.assertIn("--mcp-url URL", result.stdout)
+        self.assertFalse((self.root / "setup").exists())
+        self.assertEqual((self.root / "daemon-call").read_text().strip(), "_internal stop-daemon")
+
+    def test_agent_choice_uses_same_cli_and_refreshes_historical_copies(self):
+        copies = [self.old_binary(self.root / name / "bin" / "cully")
+                  for name in [".claude", ".codex", ".cursor", "claude"]]
+        for agent in ["codex", "claude", "cursor", "all"]:
+            with self.subTest(agent=agent):
+                result = self.run_installer("--agent", agent)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue((self.root / ".local" / "bin" / "cully").exists())
+                self.assertIn(f"cully setup --agent {agent} --all", result.stdout)
+                for copy in copies:
+                    self.assertTrue(copy.is_symlink())
+                    self.assertEqual(copy.readlink(), self.root / ".local" / "bin" / "cully")
+                    self.assertEqual(copy.read_bytes(), self.cli.read_bytes())
+        profile = (self.root / ".zshrc").read_text()
+        self.assertEqual(profile.count('export PATH="$HOME/.local/bin:$PATH"'), 1)
+
+    def test_selected_custom_home_installation_is_upgraded(self):
+        old = self.old_binary(self.bin / "cully")
+        result = self.run_installer()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(old.read_bytes(), self.cli.read_bytes())
+        self.assertTrue(old.is_symlink())
+        self.assertEqual(old.readlink(), self.root / ".local" / "bin" / "cully")
+        self.assertIn("Agent symlink", result.stdout)
+
+    def test_repoints_cully_symlinks_and_preserves_custom_wrappers(self):
+        target = self.old_binary(self.root / "linked-cully")
+        link = self.root / ".claude" / "bin" / "cully"
+        link.parent.mkdir(parents=True)
+        link.symlink_to(target)
+        wrapper = self.root / ".codex" / "bin" / "cully"
+        wrapper.parent.mkdir(parents=True)
+        wrapper.write_text("#!/bin/sh\necho 'custom wrapper'\n")
+        wrapper.chmod(0o755)
+        wrapper_contents = wrapper.read_bytes()
+        target_contents = target.read_bytes()
+        result = self.run_installer()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(target.read_bytes(), target_contents)
+        self.assertEqual(wrapper.read_bytes(), wrapper_contents)
+        self.assertEqual(link.readlink(), self.root / ".local" / "bin" / "cully")
+        self.assertIn(f"Agent symlink: {link}", result.stdout)
+        self.assertIn(f"Preserved custom command: {wrapper}", result.stdout)
+
+    def test_failed_download_leaves_old_binary_unchanged(self):
+        old = self.old_binary(self.bin / "cully")
+        contents = old.read_bytes()
+        self.env["DOWNLOAD_FAIL"] = "1"
+        result = self.run_installer()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(old.read_bytes(), contents)
+        self.assertFalse((self.root / ".zshrc").exists())
+
+    def test_pinned_version_is_explicit_in_download_url(self):
+        self.env["CULLY_VERSION"] = "v0.10.1"
+        result = self.run_installer()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("releases/download/v0.10.1/", (self.root / "curl-calls").read_text())
+
+    def test_canonical_symlink_becomes_the_only_installed_binary(self):
+        target = self.old_binary(self.root / "linked-cully")
+        destination = self.root / ".local" / "bin" / "cully"
+        destination.parent.mkdir(parents=True)
+        destination.symlink_to(target)
+        contents = target.read_bytes()
+        result = self.run_installer()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(destination.is_symlink())
+        self.assertEqual(destination.read_bytes(), self.cli.read_bytes())
+        self.assertEqual(target.read_bytes(), contents)
+
+    def test_fresh_agent_install_creates_link_to_single_binary(self):
+        result = self.run_installer("--agent", "codex")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        binary = self.root / ".local" / "bin" / "cully"
+        link = self.root / ".codex" / "bin" / "cully"
+        self.assertFalse(binary.is_symlink())
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(link.readlink(), binary)
+        self.assertFalse((self.root / ".cursor").exists())
+        self.assertFalse((self.root / "claude").exists())
+
+    def test_reinstall_keeps_agent_link_and_upgrades_its_target(self):
+        result = self.run_installer("--agent", "codex")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        binary = self.root / ".local" / "bin" / "cully"
+        link = self.root / ".codex" / "bin" / "cully"
+        inode = link.lstat().st_ino
+        binary.write_text("#!/bin/sh\necho 'cully 0.3.0'\n")
+        result = self.run_installer("--agent", "codex")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(link.lstat().st_ino, inode)
+        self.assertEqual(link.read_bytes(), self.cli.read_bytes())
+        self.assertIn("Agent link already configured", result.stdout)
+
+    def test_repairs_dangling_agent_link(self):
+        link = self.root / ".codex" / "bin" / "cully"
+        link.parent.mkdir(parents=True)
+        link.symlink_to(self.root / "removed-binary")
+        result = self.run_installer("--agent", "codex")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(link.readlink(), self.root / ".local" / "bin" / "cully")
+        self.assertEqual(link.read_bytes(), self.cli.read_bytes())
+
+    def test_remote_setup_without_agent_explicitly_selects_codex(self):
+        result = self.run_installer("--mcp-url", "https://example.com/mcp")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / "setup").read_text().strip(),
+                         "setup --agent codex --mcp-url https://example.com/mcp")
+
+    def test_preserves_shell_settings_and_prioritizes_canonical_path(self):
+        profile = self.root / ".zshrc"
+        profile.write_text("# my own settings\n")
+        old = self.old_binary(self.root / ".claude" / "bin" / "cully")
+        self.env["PATH"] = str(old.parent) + os.pathsep + self.env["PATH"]
+        result = self.run_installer("--agent", "codex", "--mcp-url", "https://example.com/mcp")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(profile.read_text().startswith("# my own settings\n"))
+        self.assertEqual((self.root / "setup-path").read_text().split(os.pathsep)[0], str(self.root / ".local" / "bin"))
+
     def test_checksum_mismatch_aborts_install(self):
+        old = self.old_binary(self.bin / "cully")
+        contents = old.read_bytes()
         (self.root / "checksums.txt").write_text("bad  cully_linux_amd64.tar.gz\n")
         result = self.run_installer()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("checksum mismatch", result.stderr)
+        self.assertEqual(old.read_bytes(), contents)
         self.assertFalse((self.root / ".local" / "bin" / "cully").exists())
-
-    def test_agent_binary_and_path_follow_selected_agent(self):
-        for agent, directory in [("claude", ".claude"),
-                                 ("codex", ".codex"),
-                                 ("cursor", ".cursor"),
-                                 ("all", ".local"),
-                                 (None, ".local")]:
-            with self.subTest(agent=agent):
-                self.env.pop("CLAUDE_CONFIG_DIR", None)
-                self.env.pop("CODEX_HOME", None)
-                self.env.pop("CURSOR_CONFIG_DIR", None)
-                self.env["SHELL"] = "/bin/zsh"
-                args = ("--agent", agent) if agent else ()
-                result = self.run_installer(*args)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                installed = self.root / directory / "bin" / "cully"
-                self.assertTrue(installed.is_file())
-                self.assertEqual((self.root / "daemon-call").read_text().strip(),
-                                 "_internal stop-daemon")
-                self.assertFalse((self.root / "setup").exists())
-                self.assertIn("Start Docker, then run: cully setup", result.stdout)
-                if agent:
-                    self.assertIn(f"cully setup --agent {agent}", result.stdout)
-                path_line = f'export PATH="$HOME/{directory}/bin:$PATH"'
-                self.assertEqual((self.root / ".zshrc").read_text().count(path_line), 1)
-
-    def test_path_line_is_idempotent_and_preserves_shell_config(self):
-        self.env.pop("CODEX_HOME")
-        self.env["SHELL"] = "/bin/zsh"
-        profile = self.root / ".zshrc"
-        profile.write_text("# my own settings\n")
-        for _ in range(2):
-            result = self.run_installer("--agent", "codex")
-            self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(profile.read_text().count('export PATH="$HOME/.codex/bin:$PATH"'), 1)
-        self.assertTrue(profile.read_text().startswith("# my own settings\n"))
-
-    def test_selected_agent_binary_overrides_older_claude_install(self):
-        self.env.pop("CODEX_HOME")
-        self.env["SHELL"] = "/bin/zsh"
-        old_bin = self.root / ".claude" / "bin"
-        selected_bin = self.root / ".codex" / "bin"
-        old_bin.mkdir(parents=True)
-        selected_bin.mkdir(parents=True)
-        old_cli = old_bin / "cully"
-        old_cli.write_text("#!/bin/sh\necho old\n")
-        old_cli.chmod(0o755)
-        self.env["PATH"] = os.pathsep.join((str(old_bin), str(selected_bin), self.env["PATH"]))
-        result = self.run_installer("--agent", "codex", "--mcp-url", "https://example.com/mcp")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((self.root / "setup-path").read_text().split(os.pathsep)[0],
-                         str(selected_bin))
-        self.assertIn('export PATH="$HOME/.codex/bin:$PATH"',
-                      (self.root / ".zshrc").read_text())
 
 
 if __name__ == "__main__":

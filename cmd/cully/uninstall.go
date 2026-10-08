@@ -86,6 +86,18 @@ func removeCurrentInstallerBinary() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	canonical := filepath.Join(home, ".local", "bin", "cully")
+	resolved, resolveErr := filepath.EvalSymlinks(executable)
+	resolvedCanonical, canonicalErr := filepath.EvalSymlinks(canonical)
+	if resolveErr == nil && canonicalErr == nil && resolved == resolvedCanonical {
+		if err := removeInstallerLinks(home, canonical); err != nil {
+			return false, err
+		}
+		if err := os.Remove(canonical); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
 	for _, candidate := range []string{
 		filepath.Join(cully.ConfigDir(), "bin", "cully"),
 		filepath.Join(cully.CodexConfigDir(), "bin", "cully"),
@@ -223,4 +235,25 @@ func purgeSelfHostedData() error {
 		return err
 	}
 	return os.RemoveAll(base)
+}
+
+// Remove only links that point to the canonical installer binary.
+func removeInstallerLinks(home, canonical string) error {
+	for _, candidate := range []string{
+		filepath.Join(cully.ConfigDir(), "bin", "cully"),
+		filepath.Join(cully.CodexConfigDir(), "bin", "cully"),
+		filepath.Join(cully.CursorConfigDir(), "bin", "cully"),
+		filepath.Join(home, ".claude", "bin", "cully"),
+		filepath.Join(home, ".codex", "bin", "cully"),
+		filepath.Join(home, ".cursor", "bin", "cully"),
+	} {
+		target, err := os.Readlink(candidate)
+		if err != nil || target != canonical {
+			continue
+		}
+		if err := os.Remove(candidate); err != nil {
+			return err
+		}
+	}
+	return nil
 }

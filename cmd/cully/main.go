@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/mcp-runtime/cully/internal/cully"
 )
@@ -16,7 +15,7 @@ var version = "dev"
 const help = `Cully — your coding agents need a copilot too.
 
 Usage:
-  cully setup [--agent claude|codex|cursor|all] [--oauth] [--prepare]
+  cully setup --all [--agent claude|codex|cursor|all] [--oauth] [--prepare]
                                          Start the full local stack, integrations and advisor
   cully setup [--agent AGENT] --mcp-url URL [--oauth]
                                          Use an existing server; set up integrations and advisor
@@ -133,6 +132,7 @@ func runSetup(args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Cully %s setup\n", version)
 	if options.endpoint != "" {
 		fmt.Println("Setting up Cully with an existing MCP server")
 		var targets []string
@@ -140,6 +140,9 @@ func runSetup(args []string) error {
 			targets = append(targets, options.target)
 		}
 		if err := cully.InstallWithMCP(options.endpoint, options.oauth, targets...); err != nil {
+			return err
+		}
+		if err := checkSetupMCP(os.Stdout, options.endpoint, options.oauth); err != nil {
 			return err
 		}
 		fmt.Println("Setup complete. Restart your coding agent to load the Cully skill, hooks and MCP tools.")
@@ -155,49 +158,38 @@ type setupOptions struct {
 
 func parseSetup(args []string) (setupOptions, error) {
 	var options setupOptions
-	legacyTarget := ""
-	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
-		legacyTarget, args = args[0], args[1:]
-	}
 	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
-	selected := fs.String("agent", "", "coding agent to connect: claude, codex, cursor, or all; default: detect installed agents")
-	fs.StringVar(&options.endpoint, "mcp-url", "", "connect to an existing MCP server instead of starting local memory services")
+	fs.StringVar(&options.target, "agent", "", "coding agent: claude, codex, cursor, or all; default: detect installed agents")
+	all := fs.Bool("all", false, "start the full stack on this machine, configure agents, and start the advisor")
+	fs.StringVar(&options.endpoint, "mcp-url", "", "connect to an already deployed Cully MCP server")
 	fs.BoolVar(&options.oauth, "oauth", false, "server uses OAuth; print sign-in instructions")
-	fs.BoolVar(&options.prepare, "prepare", false, "download the self-hosted stack and create editable configuration without starting services")
+	fs.BoolVar(&options.prepare, "prepare", false, "with --all, prepare local configuration without starting services")
 	if err := fs.Parse(args); err != nil {
 		return setupOptions{}, err
 	}
-	usage := fmt.Errorf("usage: cully setup [--agent claude|codex|cursor|all] [--mcp-url URL] [--oauth] [--prepare]")
-	if len(fs.Args()) > 1 || (legacyTarget != "" && len(fs.Args()) != 0) {
-		return setupOptions{}, usage
+	if len(fs.Args()) != 0 {
+		return setupOptions{}, fmt.Errorf("setup does not accept positional agents; use cully setup --agent codex --all or cully setup --agent codex --mcp-url URL")
 	}
-	if legacyTarget != "" {
-		options.target = legacyTarget
+	if *all && options.endpoint != "" {
+		return setupOptions{}, fmt.Errorf("choose either --all for a local stack or --mcp-url for a deployed stack")
 	}
-	if len(fs.Args()) == 1 {
-		options.target = fs.Args()[0]
+	if !*all && options.endpoint == "" {
+		return setupOptions{}, fmt.Errorf("setup requires --all to start Cully on this machine, or --mcp-url URL to connect to a deployed Cully stack")
 	}
-	agentFlagSet := false
-	endpointFlagSet := false
-	fs.Visit(func(option *flag.Flag) {
-		if option.Name == "agent" {
-			agentFlagSet = true
-		}
-		if option.Name == "mcp-url" {
-			endpointFlagSet = true
-		}
-	})
-	if agentFlagSet {
-		if *selected == "" || options.target != "" {
-			return setupOptions{}, usage
-		}
-		options.target = *selected
-	}
-	if endpointFlagSet && (options.endpoint == "" || options.prepare) {
-		return setupOptions{}, fmt.Errorf("--mcp-url requires a URL and cannot be combined with --prepare")
+	if options.prepare && !*all {
+		return setupOptions{}, fmt.Errorf("--prepare requires --all")
 	}
 	if options.target != "" && options.target != "claude" && options.target != "codex" && options.target != "cursor" && options.target != "all" {
 		return setupOptions{}, fmt.Errorf("choose --agent claude, codex, cursor, or all")
+	}
+	var emptyFlag string
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "agent" && options.target == "" || f.Name == "mcp-url" && options.endpoint == "" {
+			emptyFlag = f.Name
+		}
+	})
+	if emptyFlag != "" {
+		return setupOptions{}, fmt.Errorf("--%s requires a value", emptyFlag)
 	}
 	return options, nil
 }

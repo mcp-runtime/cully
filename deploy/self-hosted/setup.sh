@@ -5,6 +5,8 @@ setup_cwd=${CULLY_SETUP_CWD:-$(pwd)}
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$script_dir"
 
+stage='checking prerequisites'
+trap 'result=$?; if [ "$result" -ne 0 ]; then printf "\nCully setup failed during %s (exit %s). Fix the error above and rerun setup.\n" "$stage" "$result" >&2; fi' EXIT
 say() { printf '\n==> %s\n' "$1"; }
 
 mode=none
@@ -28,6 +30,7 @@ esac
 say '[1/7] Checking Docker Compose and the Cully CLI'
 command -v docker >/dev/null 2>&1 || { echo 'Docker Compose is required for self-hosting.' >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo 'Docker Compose is required for self-hosting.' >&2; exit 1; }
+docker info >/dev/null 2>&1 || { echo 'Docker daemon is unavailable; start Docker and rerun setup.' >&2; exit 1; }
 cli=${CULLY_CLI_BINARY:-cully}
 if ! command -v "$cli" >/dev/null 2>&1; then
   if [ -x "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/bin/cully" ]; then
@@ -46,6 +49,7 @@ fi
 # Resolve before returning to the caller's project for agent integration.
 cli=$(command -v "$cli")
 case "$cli" in /*) ;; *) cli="$script_dir/$cli" ;; esac
+stage='preparing credentials'
 say '[2/7] Generating or reusing private database passwords, API keys and owner ID (values are not printed)'
 "$cli" _internal self-hosted-credentials ensure
 if [ ! -f .env ]; then
@@ -75,18 +79,23 @@ say 'Choosing free local ports (MCP prefers 3393; other services use uncommon po
 running=""
 if [ -n "$(compose ps -q mcp 2>/dev/null)" ]; then running="--running"; fi
 "$cli" _internal self-hosted-ports ensure $running
+stage='validating Compose'
 say '[3/7] Checking Docker Compose configuration'
 compose config --quiet
+stage='starting databases'
 say '[4/7] Pulling images if needed and starting PostgreSQL databases'
 compose up -d --wait db mem0-db
+stage='migrating the schema'
 say '[5/7] Applying the Cully database schema'
 compose --profile ops run --rm migrate
 say 'The Mem0 image includes the local embedding model; its first build downloads and caches that model'
 case "$mode" in
   none)
+    stage='building and starting memory services'
     say '[6/7] Building and starting Cully MCP, the private data API and Mem0'
     compose up -d --build --wait data-api mem0 mcp ;;
   mcp-auth)
+    stage='building and starting memory services'
     say '[6/7] Building and starting Cully MCP, the private data API, Mem0, MCP Auth and Caddy'
     compose up -d --build --wait data-api mem0 mcp mcp-auth caddy ;;
 esac
@@ -96,7 +105,8 @@ if [ "$mode" = none ]; then
 fi
 say 'Local Cully services are ready'
 echo "Cully MCP is configured at $endpoint"
-say '[7/7] Configuring agent skills, hooks and MCP connections; starting the advisor daemon'
+stage='configuring agents and verifying MCP'
+say '[7/7] Configuring agent skills, hooks and MCP connections; starting the advisor and verifying MCP'
 set -- setup --mcp-url "$endpoint"
 [ -z "$agent" ] || set -- "$@" --agent "$agent"
 [ "$mode" = none ] || set -- "$@" --oauth

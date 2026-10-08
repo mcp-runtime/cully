@@ -23,7 +23,7 @@ With Docker running, connect the agent you installed:
 
 <InstallCommand kind="setup" />
 
-Use the same agent you picked in step 1, or run bare `cully setup` to detect installed agents automatically. This one command downloads the matching local stack, creates private credentials that stay stable across restarts, and starts PostgreSQL, Mem0, the private data API and Cully MCP in Docker. It connects your agent to MCP, configures the Cully skill, session hooks and [agent-specific controls](/agents), and starts the local advisor daemon if needed. Setup only reports completion after the advisor is running. A component failure exits with an error; fix it and rerun the same setup command to retry. See [what runs on your laptop](/hosting#what-starts-on-your-laptop).
+Use the same agent you picked in step 1, or run bare `cully setup --all` to detect installed agents automatically. This one command downloads the matching local stack, creates private credentials that stay stable across restarts, and starts PostgreSQL, Mem0, the private data API and Cully MCP in Docker. It connects your agent to MCP, configures the Cully skill, session hooks and [agent-specific controls](/agents), and starts the local advisor daemon if needed. Setup only reports completion after the advisor is running. A component failure exits with an error; fix it and rerun the same setup command to retry. See [what runs on your laptop](/hosting#what-starts-on-your-laptop).
 
 When `Setup complete` appears, restart your agent. In Codex, review and trust the installed Cully hooks in `/hooks` when asked. You do not need a repository checkout or OAuth for this laptop setup.
 
@@ -73,7 +73,7 @@ You can also use Cully inside your agent:
 | Codex | Start `cully run codex` for the health bar and advisor panel, or run `/prompts:cully suggestions`. |
 | Cursor | Start `cully run cursor` for the health bar and advisor panel, or run the project `/cully suggestions` command. |
 
-If Cully lists a numbered improvement, use its number with `cully apply 1 --dry-run` to inspect the proposed change. Review it before applying. `cully status` also shows whether the advisor daemon is running; if startup failed, run `cully setup --agent codex` with your agent name to retry. See the [advisor commands](/advisor#commands) for the rest.
+If Cully lists a numbered improvement, use its number with `cully apply 1 --dry-run` to inspect the proposed change. Review it before applying. `cully status` also shows whether the advisor daemon is running; if startup failed, run `cully setup --agent codex --all` with your agent name to retry. See the [advisor commands](/advisor#commands) for the rest.
 
 To stop and disconnect the local stack later, run `cully uninstall`. It keeps
 your notes by default. The [self-hosting guide](/hosting#uninstall-the-laptop-stack)

@@ -30,8 +30,8 @@ func TestSetupMCPOptionsFailBeforeChangingAgentSetup(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("CODEX_HOME", dir)
 	for _, args := range [][]string{
-		{"codex", "--mcp-url", "not-a-url"},
-		{"--mcp-url", "not-a-url", "codex"},
+		{"--agent", "codex", "--mcp-url", "not-a-url"},
+		{"--mcp-url", "not-a-url", "--agent", "codex"},
 	} {
 		if err := runSetup(args); err == nil {
 			t.Fatalf("accepted invalid setup options: %v", args)
@@ -42,7 +42,7 @@ func TestSetupMCPOptionsFailBeforeChangingAgentSetup(t *testing.T) {
 	}
 }
 
-func TestSetupAgentFlagAndLegacyName(t *testing.T) {
+func TestSetupExplicitModes(t *testing.T) {
 	for _, test := range []struct {
 		args     []string
 		target   string
@@ -50,14 +50,13 @@ func TestSetupAgentFlagAndLegacyName(t *testing.T) {
 		prepare  bool
 		endpoint string
 	}{
-		{},
-		{args: []string{"--agent", "codex"}, target: "codex"},
-		{args: []string{"--agent", "all"}, target: "all"},
+		{args: []string{"--all"}},
+		{args: []string{"--agent", "codex", "--all"}, target: "codex"},
+		{args: []string{"--agent", "all", "--all"}, target: "all"},
 		{args: []string{"--agent", "codex", "--mcp-url", "https://mcp.example.com/mcp", "--oauth"}, target: "codex", endpoint: "https://mcp.example.com/mcp", oauth: true},
-		{args: []string{"--agent=claude", "--oauth"}, target: "claude", oauth: true},
-		{args: []string{"--agent", "cursor", "--prepare"}, target: "cursor", prepare: true},
-		{args: []string{"codex", "--oauth"}, target: "codex", oauth: true},
-		{args: []string{"--prepare"}, prepare: true},
+		{args: []string{"--agent=claude", "--all", "--oauth"}, target: "claude", oauth: true},
+		{args: []string{"--agent", "cursor", "--all", "--prepare"}, target: "cursor", prepare: true},
+		{args: []string{"--all", "--prepare"}, prepare: true},
 	} {
 		options, err := parseSetup(test.args)
 		if err != nil || options.target != test.target || options.oauth != test.oauth || options.prepare != test.prepare || options.endpoint != test.endpoint {
@@ -65,7 +64,7 @@ func TestSetupAgentFlagAndLegacyName(t *testing.T) {
 		}
 	}
 	for _, args := range [][]string{
-		{"--agent"}, {"--agent", ""}, {"--agent", "other"},
+		nil, {"codex"}, {"--agent", "codex"}, {"--all", "--mcp-url", "https://example.com/mcp"}, {"--prepare"}, {"--agent"}, {"--agent", ""}, {"--agent", "other"},
 		{"codex", "--agent", "claude"}, {"--agent", "codex", "cursor"},
 		{"--mcp-url", ""}, {"--mcp-url"}, {"--mcp-url", "https://mcp.example.com/mcp", "--prepare"},
 	} {

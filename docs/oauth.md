@@ -5,7 +5,7 @@ description: Set up OAuth when several people use a Cully server over HTTPS.
 
 # Add sign-in to Cully
 
-OAuth is optional for a company team deployment. You do not need it for `cully setup --agent codex` on your laptop. When an ops team deploys one Cully server for several people over HTTPS, OAuth lets each person sign in and access their own records. [MCP Auth](https://github.com/mcp-runtime/mcp-auth) can connect Cully to the company's OIDC or OAuth 2.0 identity provider.
+OAuth is optional for a company team deployment. You do not need it for `cully setup --agent codex --all` on your laptop. When an ops team deploys one Cully server for several people over HTTPS, OAuth lets each person sign in and access their own records. [MCP Auth](https://github.com/mcp-runtime/mcp-auth) can connect Cully to the company's OIDC or OAuth 2.0 identity provider.
 
 MCP Auth is an authorization broker, not the company's user directory. The identity provider handles user sign-in; MCP Auth issues a token for Cully's exact public MCP URL; Cully verifies that token and uses its subject as the record owner. Read tools require `tools:read` and writes require `tools:write`. The [team deployment diagram](/team-deployment) shows the service flow.
 
@@ -16,7 +16,7 @@ For the provided Docker Compose stack, prepare two public hostnames pointing to 
 1. Create the editable files without starting containers:
 
    ```sh
-   cully setup --prepare
+   cully setup --all --prepare
    ```
 
 2. Register a client with your identity provider. Set its redirect URI to your MCP Auth callback, such as `https://auth.example.com/mcp-auth/identity/callback`. Follow the [MCP Auth connector guide](https://github.com/mcp-runtime/mcp-auth/blob/main/docs/auth-server.md#connect-an-organizations-identity-provider) for provider settings and identity claims.
@@ -43,7 +43,7 @@ For the provided Docker Compose stack, prepare two public hostnames pointing to 
 
 6. Start the stack and connect your agent:
 
-   <InstallCommand template="cully setup --agent {agent} --oauth" />
+   <InstallCommand template="cully setup --agent {agent} --all --oauth" />
 
    Setup starts Cully, MCP Auth and Caddy, then registers the public MCP URL with your agent. Restart the agent. For Codex, run `codex mcp login cully`; in Claude Code, use `/mcp`; in Cursor, sign in from MCP settings.
 

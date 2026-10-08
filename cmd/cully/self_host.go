@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	selfhost "github.com/mcp-runtime/cully/deploy/self-hosted"
 )
 
 const maxSourceSize = 200 << 20
@@ -24,6 +26,8 @@ func runSelfHost(agent string, oauth, prepare bool) error {
 	if agent != "" && agent != "claude" && agent != "codex" && agent != "cursor" && agent != "all" {
 		return fmt.Errorf("choose an agent: claude, codex, cursor, or all")
 	}
+	fmt.Println("Local setup: download the stack, reuse private settings, start services, configure agents, and verify MCP.")
+	fmt.Println("First setup can take several minutes to download images and build Cully and Mem0.")
 	ref, err := stackRef(version)
 	if err != nil {
 		return err
@@ -46,10 +50,23 @@ func runSelfHost(agent string, oauth, prepare bool) error {
 	}
 	fmt.Printf("Cully self-hosted configuration: %s\n", configDir)
 	if prepare {
-		fmt.Println("Edit .env and, for OAuth, connectors.json and .secrets/signing-key.pem; then run cully setup (add --oauth for team sign-in).")
+		fmt.Println("Edit .env and, for OAuth, connectors.json and .secrets/signing-key.pem; then run cully setup --all (add --oauth for team sign-in).")
 		return nil
 	}
-	args := []string{"./setup.sh"}
+	// Run the current helper against the matching release's Docker files.
+	helper, err := os.CreateTemp(setupDir, ".cully-setup-*.sh")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(helper.Name())
+	if _, err := helper.WriteString(selfhost.SetupScript); err != nil {
+		helper.Close()
+		return err
+	}
+	if err := helper.Close(); err != nil {
+		return err
+	}
+	args := []string{helper.Name()}
 	if oauth {
 		args = append(args, "--oauth", "mcp-auth")
 	}
@@ -66,7 +83,7 @@ func runSelfHost(agent string, oauth, prepare bool) error {
 	if err != nil {
 		return err
 	}
-	command.Env = append(os.Environ(), "CULLY_CLI_BINARY="+executable, "CULLY_SETUP_CWD="+cwd)
+	command.Env = append(os.Environ(), "CULLY_CLI_BINARY="+executable, "CULLY_SETUP_CWD="+cwd, "BUILDKIT_PROGRESS=plain")
 	command.Stdin = os.Stdin
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
@@ -94,6 +111,7 @@ func ensureStack(ref, base string) (string, error) {
 	destination := filepath.Join(releases, ref)
 	setup := filepath.Join(destination, "deploy", "self-hosted", "setup.sh")
 	if _, err := os.Stat(setup); err == nil {
+		fmt.Printf("Reusing downloaded stack at %s\n", destination)
 		return destination, nil
 	} else if !os.IsNotExist(err) {
 		return "", err
@@ -112,7 +130,7 @@ func ensureStack(ref, base string) (string, error) {
 	if ref == "main" {
 		url = "https://github.com/mcp-runtime/cully/archive/refs/heads/main.tar.gz"
 	}
-	fmt.Printf("Downloading Cully Docker stack from %s\n", ref)
+	fmt.Printf("Downloading Cully Docker stack from %s (%s); timeout: 3 minutes\n", ref, url)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -127,9 +145,12 @@ func ensureStack(ref, base string) (string, error) {
 	if response.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("Cully stack download failed: HTTP %d", response.StatusCode)
 	}
-	if err := extractStack(io.LimitReader(response.Body, maxSourceSize), temporary); err != nil {
+	fmt.Println("Extracting the managed Docker stack.")
+	progress := &stackDownloadProgress{last: time.Now()}
+	if err := extractStack(io.TeeReader(io.LimitReader(response.Body, maxSourceSize), progress), temporary); err != nil {
 		return "", err
 	}
+	fmt.Printf("Downloaded and extracted %.1f MiB.\n", float64(progress.bytes)/(1<<20))
 	if _, err := os.Stat(filepath.Join(temporary, "deploy", "self-hosted", "setup.sh")); err != nil {
 		return "", fmt.Errorf("Cully source archive has no Docker setup: %w", err)
 	}
@@ -281,4 +302,19 @@ func linkStackConfig(setupDir, configDir string) error {
 		}
 	}
 	return nil
+}
+
+// Report compressed bytes as they arrive without exposing archive contents.
+type stackDownloadProgress struct {
+	bytes int64
+	last  time.Time
+}
+
+func (p *stackDownloadProgress) Write(data []byte) (int, error) {
+	p.bytes += int64(len(data))
+	if time.Since(p.last) >= 2*time.Second {
+		fmt.Printf("Downloading and extracting: %.1f MiB received.\n", float64(p.bytes)/(1<<20))
+		p.last = time.Now()
+	}
+	return len(data), nil
 }

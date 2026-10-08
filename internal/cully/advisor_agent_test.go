@@ -172,7 +172,10 @@ func TestAdvisorHostSelectionAndCapabilities(t *testing.T) {
 }
 
 func TestAdvisorChildUsesHostAndDropsForegroundBinding(t *testing.T) {
-	root := t.TempDir()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("CODEX_HOME", root)
 	t.Setenv("PATH", root)
 	t.Setenv("CULLY_PANE_SESSION", "foreground")

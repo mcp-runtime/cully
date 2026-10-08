@@ -7,7 +7,7 @@ const copied = ref(false)
 const command = computed(() => {
   if (props.template) return props.template.replace('{agent}', selected.value)
   return props.kind === 'setup'
-    ? `cully setup --agent ${selected.value}`
+    ? `cully setup --agent ${selected.value} --all`
     : `curl -fsSL https://cully.net/install.sh | sh -s -- --agent ${selected.value}`
 })
 

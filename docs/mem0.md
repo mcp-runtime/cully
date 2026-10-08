@@ -5,7 +5,7 @@ description: Understand how Cully indexes notes with self-hosted Mem0.
 
 # Mem0 and semantic recall
 
-Mem0 is part of Cully's standard memory stack. `cully setup --agent AGENT` starts Mem0 alongside Cully, PostgreSQL and the private data API. You do not need a Mem0 account or embedding API key.
+Mem0 is part of Cully's standard memory stack. `cully setup --agent AGENT --all` starts Mem0 alongside Cully, PostgreSQL and the private data API. You do not need a Mem0 account or embedding API key.
 
 PostgreSQL stores the source note. Cully sends an owner-scoped projection of its authored summary and populated approach, outcome, issue, learning and next-step fields to Mem0, which indexes them by meaning. When an agent uses `cully_recall`, Mem0 finds candidates and Cully checks the live source records before returning them. `cully_search` and `cully_recent` read PostgreSQL directly.
 

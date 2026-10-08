@@ -30,7 +30,7 @@ The Cursor editor itself is not a terminal program, so the Cully terminal wraps 
 
 ## What setup installs
 
-| Agent | Installed by `cully setup` |
+| Agent | Installed by `cully setup --all` |
 | --- | --- |
 | Claude Code | Session and stop hooks, an asynchronous tool-event hook for the terminal, a status line that feeds the terminal panel (and shows itself when you run Claude outside the terminal), a `/cully` command and the Cully skill. |
 | Codex | A session-start hook, an asynchronous tool-event hook, a `/prompts:cully` prompt, managed `AGENTS.md` guidance and the skill. Codex's native footer settings stay yours. |
@@ -66,8 +66,8 @@ Cursor's shell hook reports no exit code, so a failed Cursor command is not mark
 
 ## If you already installed the advisor
 
-Use `cully mcp add --agent codex --url URL` to add only the MCP connection. Add `--oauth` when the server requires sign-in. If you installed Cully before the terminal hooks were available, rerun `cully setup --agent claude` (with your agent name, and `--mcp-url URL` if you use an existing server) to refresh the skill and hooks. Setup preserves unrelated agent configuration and does not replace a Cully connection that points at another URL. Run `cully status` to inspect the local integration.
+Use `cully mcp add --agent codex --url URL` to add only the MCP connection. Add `--oauth` when the server requires sign-in. If you installed Cully before the terminal hooks were available, rerun `cully setup --agent claude --all` (with your agent name; replace `--all` with `--mcp-url URL` if you use an existing server) to refresh the skill and hooks. Setup preserves unrelated agent configuration and does not replace a Cully connection that points at another URL. Run `cully status` to inspect the local integration.
 
-Running `cully setup` starts the standard local memory stack and advisor, and installs integrations for detected agents. Use `--agent AGENT` to select one or `--agent all` for all supported agents. With `--mcp-url URL`, setup connects to that existing server and starts the local advisor without starting Docker services. Setup does not sign you into an OAuth server automatically. For server requirements, see [self-hosting](/hosting) and [team deployment](/team-deployment).
+Running `cully setup --all` starts the standard local memory stack and advisor, and installs integrations for detected agents. Use `--agent AGENT` to select one or `--agent all` for all supported agents. With `--mcp-url URL`, setup connects to that existing server and starts the local advisor without starting Docker services. Setup does not sign you into an OAuth server automatically. For server requirements, see [self-hosting](/hosting) and [team deployment](/team-deployment).
 
 For detailed client configuration, see the [client reference](https://github.com/mcp-runtime/cully/blob/main/clients/README.md).

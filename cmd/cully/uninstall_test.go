@@ -174,3 +174,44 @@ func TestRunUninstallKeepsThenPurgesMemoryAndPreservesOtherMCP(t *testing.T) {
 		t.Fatalf("purge did not request Docker volume deletion: %s, %v", commands, err)
 	}
 }
+
+func TestRemoveInstallerLinksPreservesOtherFiles(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
+	t.Setenv("CODEX_HOME", filepath.Join(home, ".codex"))
+	t.Setenv("CURSOR_CONFIG_DIR", filepath.Join(home, ".cursor"))
+	canonical := filepath.Join(home, ".local", "bin", "cully")
+	for _, agent := range []string{".claude", ".codex", ".cursor"} {
+		directory := filepath.Join(home, agent, "bin")
+		if err := os.MkdirAll(directory, 0700); err != nil {
+			t.Fatal(err)
+		}
+		file := filepath.Join(directory, "cully")
+		switch agent {
+		case ".claude":
+			if err := os.Symlink(canonical, file); err != nil {
+				t.Fatal(err)
+			}
+		case ".codex":
+			if err := os.Symlink("/other/cully", file); err != nil {
+				t.Fatal(err)
+			}
+		case ".cursor":
+			if err := os.WriteFile(file, []byte("custom wrapper"), 0700); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := removeInstallerLinks(home, canonical); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(home, ".claude", "bin", "cully")); !os.IsNotExist(err) {
+		t.Fatalf("managed link remains: %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(home, ".codex", "bin", "cully")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".cursor", "bin", "cully")); err != nil {
+		t.Fatal(err)
+	}
+}

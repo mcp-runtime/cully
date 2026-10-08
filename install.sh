@@ -1,6 +1,7 @@
 #!/bin/sh
 # Cully installer — downloads a prebuilt binary. Run cully setup afterwards
-# for the complete local stack. Use --from-source to explicitly build with Go.
+# for the complete local stack. Older agent copies become symlinks to this single binary.
+# Use --from-source to explicitly build with Go.
 #
 #   curl -fsSL https://cully.net/install.sh | sh -s -- --agent codex --mcp-url http://127.0.0.1:8080/mcp
 #
@@ -32,16 +33,20 @@ case "$agent" in
   ""|claude|codex|cursor|all) ;;
   *) echo 'choose --agent claude, codex, cursor, or all' >&2; exit 2 ;;
 esac
-case "$agent" in
-  claude) agent_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; default_dir="$HOME/.claude"; path_entry='$HOME/.claude/bin' ;;
-  codex) agent_dir="${CODEX_HOME:-$HOME/.codex}"; default_dir="$HOME/.codex"; path_entry='$HOME/.codex/bin' ;;
-  cursor) agent_dir="${CURSOR_CONFIG_DIR:-$HOME/.cursor}"; default_dir="$HOME/.cursor"; path_entry='$HOME/.cursor/bin' ;;
-  *) agent_dir="$HOME/.local"; default_dir="$HOME/.local"; path_entry='$HOME/.local/bin' ;;
-esac
-BIN_DIR="$agent_dir/bin"
+# One CLI location for every agent; refresh older managed copies below.
+BIN_DIR="$HOME/.local/bin"
+current_cully="$(command -v cully 2>/dev/null || true)"
 
 die() { printf '\033[31mx\033[0m %s\n' "$1" >&2; exit 1; }
 say() { printf '\033[36m==>\033[0m %s\n' "$1"; }
+
+say "Installation plan: install the CLI in $BIN_DIR and link agent commands to that one binary."
+if [ -n "$current_cully" ]; then
+  say "Current PATH selects: $current_cully ($("$current_cully" version 2>/dev/null || echo 'version unavailable'))"
+else
+  say 'No existing Cully command found on PATH.'
+fi
+say 'The installer prints version changes, preserved copies, and any terminal refresh needed.'
 
 command -v curl >/dev/null 2>&1 || die "curl is required."
 command -v tar  >/dev/null 2>&1 || die "tar is required."
@@ -107,68 +112,140 @@ fi
 [ -f "$tmp/cully" ] || die "installer did not produce the cully binary"
 
 tmp_bin="$tmp/cully"
-old_ver=""
+new_ver="$("$tmp_bin" version 2>/dev/null)" || die 'Downloaded binary could not report its version.'
+case "$new_ver" in 'cully '*) ;; *) die 'Downloaded executable did not identify as Cully.' ;; esac
+say "Downloaded version: $new_ver"
+
+
+# Install the single real binary atomically; replace a previous link itself,
+# leaving its old target untouched.
+install_binary() {
+  destination="$1"
+  [ ! -d "$destination" ] || die "Installation path is a directory: $destination"
+  directory=$(dirname "$destination")
+  mkdir -p "$directory" || die "Cannot create installation directory $directory"
+  staged=$(mktemp "$directory/.cully-install.XXXXXX") || die "Cannot write to $directory"
+  if ! install -m 0755 "$tmp_bin" "$staged" || ! mv -f "$staged" "$destination"; then
+    rm -f "$staged"
+    die "Could not replace $destination"
+  fi
+  [ "$os" != darwin ] || xattr -d com.apple.quarantine "$destination" 2>/dev/null || true
+}
+
 if [ -x "$BIN_DIR/cully" ]; then
-  old_ver="$("$BIN_DIR/cully" version 2>/dev/null || true)"
-  new_ver="$("$tmp_bin" version 2>/dev/null || true)"
-  if [ -n "$old_ver" ] && [ "$old_ver" = "$new_ver" ]; then
-    say "Already on $new_ver"
+  say "Replacing $BIN_DIR/cully ($("$BIN_DIR/cully" version 2>/dev/null || echo 'version unavailable')) with $new_ver"
+else
+  say "Installing $new_ver in $BIN_DIR/cully"
+fi
+install_binary "$BIN_DIR/cully"
+say "Installed binary -> $BIN_DIR/cully ($new_ver)"
+
+# Agent paths contain only symlinks to the canonical binary. Migrate previous
+# binaries and repair Cully links without changing their old targets or wrappers.
+linked_paths=""
+link_copy() {
+  candidate="$1"
+  create="${2:-existing}"
+  case "$linked_paths" in
+    *"
+$candidate
+"*) return 0 ;;
+  esac
+  linked_paths="$linked_paths
+$candidate
+"
+  [ "$candidate" != "$BIN_DIR/cully" ] || return 0
+  if [ -L "$candidate" ] && [ "$(readlink "$candidate")" = "$BIN_DIR/cully" ]; then
+    say "Agent link already configured: $candidate -> $BIN_DIR/cully"
+    return 0
+  fi
+  if [ -e "$candidate" ]; then
+    if [ ! -f "$candidate" ] || [ ! -x "$candidate" ]; then
+      say "Preserved custom path: $candidate (not an executable Cully file)"
+      return 0
+    fi
+    candidate_version="$("$candidate" version 2>/dev/null || true)"
+    case "$candidate_version" in
+      'cully '*) ;;
+      *) say "Preserved custom command: $candidate (does not identify as a Cully binary)"; return 0 ;;
+    esac
+  elif [ ! -L "$candidate" ]; then
+    [ "$create" = create ] || [ -d "$(dirname "$(dirname "$candidate")")" ] || return 0
+  fi
+  case "$candidate" in
+    "$HOME"/*) ;;
+    *) say "Other installation outside your home: $candidate; use $BIN_DIR/cully or update it separately."; return 0 ;;
+  esac
+  link_dir=$(dirname "$candidate")
+  if ! mkdir -p "$link_dir" || [ ! -w "$link_dir" ]; then
+    say "Could not link $candidate: directory is not writable. Use $BIN_DIR/cully."
+    return 0
+  fi
+  # Stage the link beside its destination so replacement is atomic.
+  link_stage=$(mktemp -d "$link_dir/.cully-link.XXXXXX") || die "Cannot stage agent link in $link_dir"
+  if ! ln -s "$BIN_DIR/cully" "$link_stage/cully" || ! mv -f "$link_stage/cully" "$candidate"; then
+    rm -rf "$link_stage"
+    die "Could not link $candidate to $BIN_DIR/cully"
+  fi
+  rmdir "$link_stage"
+  say "Agent symlink: $candidate -> $BIN_DIR/cully ($new_ver); previous Cully copy or link replaced."
+}
+claude_link=existing
+codex_link=existing
+cursor_link=existing
+case "$agent" in
+  claude) claude_link=create ;;
+  codex) codex_link=create ;;
+  cursor) cursor_link=create ;;
+  all) claude_link=create; codex_link=create; cursor_link=create ;;
+esac
+link_copy "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/bin/cully" "$claude_link"
+link_copy "${CODEX_HOME:-$HOME/.codex}/bin/cully" "$codex_link"
+link_copy "${CURSOR_CONFIG_DIR:-$HOME/.cursor}/bin/cully" "$cursor_link"
+# Cover historical default directories when a custom agent directory is in use.
+link_copy "$HOME/.claude/bin/cully"
+link_copy "$HOME/.codex/bin/cully"
+link_copy "$HOME/.cursor/bin/cully"
+[ -z "$current_cully" ] || link_copy "$current_cully"
+
+say 'Stopping any running advisor daemon so the next setup uses the new version.'
+"$BIN_DIR/cully" _internal stop-daemon >/dev/null 2>&1 || true
+PATH="$BIN_DIR:$PATH"
+export PATH
+
+# Add an idempotent PATH entry for future terminals without replacing settings.
+profile=""
+case "${SHELL:-}" in
+  */zsh) profile="$HOME/.zshrc" ;;
+  */bash)
+    if [ "$os" = darwin ]; then profile="$HOME/.bash_profile"; else profile="$HOME/.bashrc"; fi ;;
+esac
+if [ -n "$profile" ]; then
+  path_line='export PATH="$HOME/.local/bin:$PATH"'
+  if [ ! -f "$profile" ] || ! grep -Fqx "$path_line" "$profile"; then
+    if printf '\n%s\n' "$path_line" >> "$profile"; then
+      say "Added Cully PATH entry to $profile for future terminals."
+    else
+      say "Could not update $profile; add $BIN_DIR to PATH manually."
+    fi
+  else
+    say "Cully PATH entry already present in $profile."
   fi
 fi
-
-mkdir -p "$BIN_DIR"
-install -m 0755 "$tmp_bin" "$BIN_DIR/cully"
-# Clear macOS Gatekeeper quarantine on the downloaded binary.
-[ "$os" = "darwin" ] && xattr -d com.apple.quarantine "$BIN_DIR/cully" 2>/dev/null || true
-
-say "Installed binary -> $BIN_DIR/cully ($("$BIN_DIR/cully" version 2>/dev/null || echo "$ver"))"
-# A previous install may have used another agent's bin directory. Stop the
-# shared advisor so setup will start the newly installed version.
-say "Stopping any running advisor daemon before setup"
-"$BIN_DIR/cully" _internal stop-daemon >/dev/null 2>&1 || true
-current_cully="$(command -v cully 2>/dev/null || true)"
-if [ "$current_cully" != "$BIN_DIR/cully" ]; then
-    # Setup starts the advisor daemon, so its first run needs the selected
-    # binary ahead of a Cully installed for another agent.
-    PATH="$BIN_DIR:$PATH"
-    export PATH
-
-    # A piped installer cannot change its parent shell. Add one line for new
-    # terminals, without replacing any user-owned shell configuration.
-    profile=""
-    if [ "$agent_dir" = "$default_dir" ]; then
-      case "${SHELL##*/}" in
-        zsh) profile="$HOME/.zshrc" ;;
-        bash)
-          if [ "$os" = darwin ]; then
-            profile="$HOME/.bash_profile"
-          else
-            profile="$HOME/.bashrc"
-          fi ;;
-      esac
-    fi
-    if [ -n "$profile" ]; then
-      path_line="export PATH=\"$path_entry:\$PATH\""
-      if [ ! -f "$profile" ] || ! grep -Fqx "$path_line" "$profile"; then
-        if ! printf '\n%s\n' "$path_line" >> "$profile"; then
-          say "Could not update $profile. Add $BIN_DIR to PATH manually or use $BIN_DIR/cully"
-          profile=""
-        fi
-      fi
-      if [ -n "$profile" ]; then
-        say "Cully PATH entry is in $profile. Open a new terminal or run: . $profile"
-      fi
-    else
-      say "For later CLI commands, add $BIN_DIR to your shell's PATH or use $BIN_DIR/cully"
-    fi
-fi
+say 'A piped installer cannot change the PATH or command cache in your current terminal.'
+say 'To refresh this terminal, run: export PATH="$HOME/.local/bin:$PATH"; hash -r'
+say 'Then verify: command -v cully; cully version'
+say 'If a different version still appears, run type -a cully to check other paths, aliases, or functions.'
+say "Expected binary: $BIN_DIR/cully; expected version: $new_ver"
+say 'Only ~/.local/bin/cully contains the installed binary; agent symlinks use that same version on every upgrade.'
 if [ -n "$mcp_url" ]; then
-  set -- setup --mcp-url "$mcp_url"
-  [ -z "$agent" ] || set -- "$@" --agent "$agent"
+  setup_agent=${agent:-codex}
+  set -- setup --agent "$setup_agent" --mcp-url "$mcp_url"
   [ "$oauth" = false ] || set -- "$@" --oauth
   say 'Setting up coding agents and the advisor with your existing MCP server'
   "$BIN_DIR/cully" "$@"
 else
-  say "CLI installed. Start Docker, then run: cully setup${agent:+ --agent $agent}"
-  say "Or use the installed path: $BIN_DIR/cully setup${agent:+ --agent $agent}"
+  setup_agent=${agent:-codex}
+  say "CLI installed. For the full local stack, start Docker and run: cully setup --agent $setup_agent --all"
+  say "For a deployed stack, run: cully setup --agent $setup_agent --mcp-url URL"
 fi

@@ -63,14 +63,16 @@ func TestCodexPaneStopsOnTerminalHangup(t *testing.T) {
 	ready := make(chan struct{})
 	go func() {
 		var captured strings.Builder
+		signaled := false
 		buf := make([]byte, 4096)
 		for {
 			n, readErr := terminal.Read(buf)
 			captured.Write(buf[:n])
-			if strings.Contains(captured.String(), "hangup child ready") {
+			if !signaled && strings.Contains(captured.String(), "hangup child ready") {
 				close(ready)
-				return
+				signaled = true
 			}
+			// Drain frames so output backpressure cannot block signal handling.
 			if readErr != nil {
 				return
 			}

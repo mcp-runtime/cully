@@ -28,7 +28,7 @@ export GOCACHE="$original_gocache"
 export PATH="$CODEX_HOME/bin:$PATH"
 export SHELL=/bin/bash
 export CULLY_E2E_MCP_URL=http://127.0.0.1:3393/mcp
-cli="$CODEX_HOME/bin/cully"
+cli="$HOME/.local/bin/cully"
 stack_dir="$HOME/.cully/self-hosted/releases/$stack_tag/deploy/self-hosted"
 
 cleanup() {
@@ -65,7 +65,9 @@ fi
 
 # This must work from a clean home without running --prepare first. The CLI
 # downloads the matching public release archive and runs its setup script.
-"$cli" setup
+setup_flags=()
+if [[ "${CULLY_E2E_PUBLISHED_CLI:-false}" != true ]]; then setup_flags=(--all); fi
+"$cli" setup "${setup_flags[@]}"
 curl --fail --retry 12 --retry-delay 2 --retry-all-errors http://127.0.0.1:3393/healthz
 test -f "$CULLY_CONFIG_PATH"
 test -f "$CODEX_HOME/skills/cully/SKILL.md"
@@ -81,7 +83,7 @@ cd "$repo_root"
 go test ./tests/e2e -run '^TestContainerStack$' -count=1 -v
 
 cd "$HOME"
-"$cli" setup --prepare
+"$cli" setup "${setup_flags[@]}" --prepare
 test -f "$HOME/.cully/self-hosted/config/.env"
 
 # Finish the same flow with the supported uninstall command.

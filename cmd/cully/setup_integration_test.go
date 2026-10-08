@@ -1,12 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // Exercise the real CLI and setup script with isolated agent configuration and
@@ -23,16 +28,37 @@ func TestSetupLifecycle(t *testing.T) {
 		agents                  []string
 		prepare, oauth, remote  bool
 	}{
-		{name: "detect agents", agents: []string{"codex", "cursor"}},
-		{name: "selected agent", args: []string{"--agent", "codex"}, agents: []string{"codex"}},
-		{name: "all agents", args: []string{"--agent", "all"}, agents: []string{"claude", "codex", "cursor"}},
-		{name: "OAuth", args: []string{"--oauth"}, agents: []string{"codex", "cursor"}, oauth: true},
+		{name: "detect agents", args: []string{"--all"}, agents: []string{"codex", "cursor"}},
+		{name: "selected agent", args: []string{"--agent", "codex", "--all"}, agents: []string{"codex"}},
+		{name: "all agents", args: []string{"--agent", "all", "--all"}, agents: []string{"claude", "codex", "cursor"}},
+		{name: "OAuth", args: []string{"--agent", "codex", "--oauth", "--mcp-url", "mock"}, agents: []string{"codex"}, oauth: true, remote: true},
 		{name: "existing server", args: []string{"--agent", "codex", "--mcp-url", "https://mcp.example.test/mcp"}, agents: []string{"codex"}, remote: true, endpoint: "https://mcp.example.test/mcp"},
-		{name: "prepare only", args: []string{"--prepare"}, prepare: true},
-		{name: "Docker failure", failure: "Docker"},
-		{name: "advisor failure", failure: "advisor"},
+		{name: "prepare only", args: []string{"--all", "--prepare"}, prepare: true},
+		{name: "Docker failure", args: []string{"--all"}, failure: "Docker"},
+		{name: "advisor failure", args: []string{"--all"}, failure: "advisor"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			mcpServer := sdk.NewServer(&sdk.Implementation{Name: "cully-lifecycle", Version: "1"}, nil)
+			sdk.AddTool(mcpServer, &sdk.Tool{Name: "cully_context", Description: "test"}, func(context.Context, *sdk.CallToolRequest, struct{}) (*sdk.CallToolResult, struct{}, error) {
+				return nil, struct{}{}, nil
+			})
+			handler := http.Handler(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return mcpServer }, nil))
+			if test.oauth {
+				handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("WWW-Authenticate", `Bearer resource_metadata="https://example.test/metadata"`)
+					w.WriteHeader(http.StatusUnauthorized)
+				})
+			}
+			protocolServer := httptest.NewServer(handler)
+			defer protocolServer.Close()
+			endpointURL := protocolServer.URL + "/mcp"
+			args := append([]string(nil), test.args...)
+			for i := range args {
+				if i > 0 && args[i-1] == "--mcp-url" {
+					args[i] = endpointURL
+				}
+			}
+
 			root := t.TempDir()
 			project := filepath.Join(root, "my project")
 			bin := filepath.Join(root, "bin")
@@ -69,7 +95,7 @@ printf '%s\n' "$*" >> "$HOME/docker-calls"
 case "$*" in
   *" up -d --wait db mem0-db")
     if [ "$TEST_DOCKER_FAIL" = 1 ]; then echo 'database startup failed' >&2; exit 1; fi ;;
-  *" port mcp 8080") echo 127.0.0.1:8080 ;;
+  *" port mcp 8080") echo "$TEST_MCP_ADDRESS" ;;
 esac
 `)
 			if test.oauth {
@@ -86,7 +112,7 @@ esac
 				"CODEX_HOME="+filepath.Join(root, ".codex"),
 				"CURSOR_CONFIG_DIR="+filepath.Join(root, ".cursor"),
 				"CULLY_CONFIG_PATH="+filepath.Join(root, ".cully", "config.json"),
-				"CULLY_ANALYZE_DISABLE=", "TEST_DOCKER_FAIL=0")
+				"CULLY_ANALYZE_DISABLE=", "TEST_DOCKER_FAIL=0", "TEST_MCP_ADDRESS="+strings.TrimPrefix(protocolServer.URL, "http://"))
 			if test.failure == "Docker" {
 				env = append(env, "TEST_DOCKER_FAIL=1")
 			}
@@ -105,7 +131,7 @@ esac
 					t.Errorf("stop test advisor: %v: %s", err, output)
 				}
 			})
-			output, err := runCLI(append([]string{"setup"}, test.args...)...)
+			output, err := runCLI(append([]string{"setup"}, args...)...)
 			if test.failure != "" {
 				if err == nil || strings.Contains(output, "Setup complete.") {
 					t.Fatalf("failed component reported success: %v: %s", err, output)
@@ -147,16 +173,11 @@ esac
 					}
 				}
 			}
-			endpoint := test.endpoint
-			if endpoint == "" {
-				endpoint = "http://127.0.0.1:8080/mcp"
+			endpoint := endpointURL
+			if test.oauth && (!strings.Contains(output, "codex mcp login cully") || !strings.Contains(output, "pending") || strings.Contains(output, "private-value")) {
+				t.Fatalf("OAuth instructions or verification failed: %s", output)
 			}
-			if test.oauth {
-				endpoint = "https://mcp.acme.test/mcp"
-				if !strings.Contains(output, "codex mcp login cully") || !strings.Contains(string(dockerCalls), "mcp-auth caddy") || strings.Contains(output, "private-value") {
-					t.Fatalf("OAuth startup, instructions or secret handling failed: %s", output)
-				}
-			}
+
 			configs := map[string]string{"claude": ".claude/.claude.json", "codex": ".codex/config.toml", "cursor": ".cursor/mcp.json"}
 			for _, agent := range test.agents {
 				content, err := os.ReadFile(filepath.Join(root, configs[agent]))
@@ -194,7 +215,7 @@ esac
 			if err != nil {
 				t.Fatal(err)
 			}
-			if output, err := runCLI(append([]string{"setup"}, test.args...)...); err != nil {
+			if output, err := runCLI(append([]string{"setup"}, args...)...); err != nil {
 				t.Fatalf("repeat setup: %v: %s", err, output)
 			}
 			repeatedPID, err := os.ReadFile(pidPath)

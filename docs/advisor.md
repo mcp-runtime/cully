@@ -7,7 +7,7 @@ description: Check your session and review Cully suggestions inside your coding 
 
 Cully checks the session signals your coding agent makes available and suggests practical improvements. It can point out a missing project instruction, a useful skill or an MCP connection. Suggestions are advisory: you review a change before applying it.
 
-`cully setup` installs the agent integrations and starts the advisor daemon along with the local memory services. After [setting up Cully](/quickstart), restart your agent and check suggestions:
+`cully setup --all` installs the agent integrations and starts the advisor daemon along with the local memory services. After [setting up Cully](/quickstart), restart your agent and check suggestions:
 
 | Agent | In the agent |
 | --- | --- |
@@ -22,7 +22,7 @@ cully status
 cully suggestions
 ```
 
-`cully status` shows whether the daemon is running. If startup failed, resolve the reported error and rerun `cully setup` with the same options. For an existing server, keep the `--mcp-url URL` option. Every agent can run in the [Cully terminal](/terminal), which gives all of them the same health bar and advisor panel. Claude Code also keeps its Cully status line when you run it outside the terminal; inside the terminal that status line stays silent and only feeds the panel. The available advice may differ between agents.
+`cully status` shows whether the daemon is running. If startup failed, resolve the reported error and rerun `cully setup --all` with the same options. For an existing server, keep the `--mcp-url URL` option. Every agent can run in the [Cully terminal](/terminal), which gives all of them the same health bar and advisor panel. Claude Code also keeps its Cully status line when you run it outside the terminal; inside the terminal that status line stays silent and only feeds the panel. The available advice may differ between agents.
 
 | Agent | Installed local integration |
 | --- | --- |
@@ -90,9 +90,9 @@ Review the preview. To apply it, run `cully apply 1` and confirm the proposed ch
 | `cully suggestions` | Lists improvements and informational notes. |
 | `cully apply <n> --dry-run` | Previews a numbered improvement. |
 | `cully apply <n>` | Applies one after confirmation. |
-| `cully setup [--agent AGENT]` | Starts the local stack, installs agent integrations and starts the advisor; detects agents by default. |
+| `cully setup --all [--agent AGENT]` | Starts the local stack, installs agent integrations and starts the advisor; detects agents by default. |
 | `cully setup --mcp-url URL [--agent AGENT]` | Connects an existing server, installs agent integrations and starts the advisor. |
-| `cully setup --prepare` | Prepares editable stack configuration without starting services or installing integrations. |
+| `cully setup --all --prepare` | Prepares editable stack configuration without starting services or installing integrations. |
 | `cully uninstall AGENT` | Removes one agent's Cully-managed integration settings. |
 | `cully uninstall` | Stops the local stack and removes managed agent integrations; keeps memory data. |
 | `cully uninstall --purge-data` | Also deletes local memory volumes and self-hosted configuration. |

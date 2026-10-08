@@ -59,7 +59,7 @@ macOS and Linux.
 curl -fsSL https://cully.net/install.sh | sh -s -- --agent codex
 ```
 
-Open a new terminal, then run `cully setup` to start the local memory stack and advisor and connect detected coding agents. Use `--agent codex` to select an agent. Setup logs each stage and reports completion only after all components are ready. Then:
+Open a new terminal, then run `cully setup --all` to start the local memory stack and advisor and connect detected coding agents. Use `--agent codex` to select an agent. Setup logs each stage and reports completion only after all components are ready. Then:
 
 ```sh
 cully run codex        # work as usual, with the health bar and advisor

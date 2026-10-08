@@ -14,11 +14,11 @@ Cully's memory service runs on your laptop for the default single-user setup. Yo
 
    <InstallCommand kind="setup" />
 
-   Run `cully setup` without `--agent` to detect and connect installed coding agents, or use `--agent all` to configure all three supported agents.
+   Run `cully setup --all` without `--agent` to detect and connect installed coding agents, or use `--agent all` to configure all three supported agents.
 3. Wait for `Setup complete` to appear, then restart your agent. Setup registers the MCP connection, configures the Cully skill, hooks and agent controls, and starts the advisor daemon if it is not already running. If any component fails, setup exits with an error and does not report completion. Resolve the reported error and rerun the same command; existing credentials and running services are reused.
 4. Work on a substantive task. Your connected agent is prompted to find relevant notes and save a concise work summary for later sessions. The [memory guide](/memory) explains what gets saved.
 
-The command downloads the matching Cully release's Docker files, prepares the local configuration, starts PostgreSQL, Mem0, the private data API and the MCP server, and creates the database schema. No repository checkout is needed. It generates service credentials and a stable single-user owner in `~/.cully/config.json`; keep that file private and back it up with your Docker volumes. Editable stack settings live in `~/.cully/self-hosted/config/.env`. You do not need to edit either file for the default laptop setup. `cully setup --prepare` only downloads the stack and creates editable configuration without starting services; use it when following the [team deployment guide](/team-deployment) to set up OAuth and public hostnames before the first start.
+The command downloads the matching Cully release's Docker files, prepares the local configuration, starts PostgreSQL, Mem0, the private data API and the MCP server, and creates the database schema. No repository checkout is needed. It generates service credentials and a stable single-user owner in `~/.cully/config.json`; keep that file private and back it up with your Docker volumes. Editable stack settings live in `~/.cully/self-hosted/config/.env`. You do not need to edit either file for the default laptop setup. `cully setup --all --prepare` only downloads the stack and creates editable configuration without starting services; use it when following the [team deployment guide](/team-deployment) to set up OAuth and public hostnames before the first start.
 
 ### What starts on your laptop
 
@@ -72,3 +72,5 @@ OAuth is optional for a company team deployment. If your ops team exposes Cully 
 ## Run the services another way
 
 The [Compose file](https://github.com/mcp-runtime/cully/blob/main/deploy/self-hosted/compose.yaml) is the reference for the containers and private networks. PostgreSQL holds source records. Mem0 uses a separate pgvector database for semantic recall; its local embedding model does not need an embedding API key. The data API, Mem0 and both databases stay private. The [team deployment guide](/team-deployment) covers other container platforms, and the [configuration reference](/configuration) lists settings for a manual deployment.
+
+Setup requires an explicit mode: `--all` starts the stack on this machine; `--mcp-url URL` connects to a deployed stack. With neither option, setup prints guidance and makes no setup changes. The full local setup reports each stage and streams Docker build progress. First builds can take several minutes. Setup checks MCP initialization and Cully tool discovery; OAuth endpoints report authenticated verification as pending until you sign in through your agent.

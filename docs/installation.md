@@ -5,7 +5,7 @@ description: Choose an agent, set up PATH, pin a release or build Cully from sou
 
 # Installer options
 
-Follow the [quickstart](/quickstart) to run the memory stack on your laptop, or [connect to a remote MCP server](#connect-to-a-remote-memory-stack) to keep only the agent integration and advisor on your machine. The installer accepts `--agent claude`, `--agent codex`, `--agent cursor` or `--agent all`; with no agent selected, it installs the CLI in `~/.local/bin`. Without `--mcp-url`, run `cully setup` after installation to start the local memory stack and advisor daemon.
+Follow the [quickstart](/quickstart) to run the memory stack on your laptop, or [connect to a remote MCP server](#connect-to-a-remote-memory-stack) to keep only the agent integration and advisor on your machine. The installer accepts `--agent claude`, `--agent codex`, `--agent cursor` or `--agent all`; every agent uses the single binary at `~/.local/bin/cully`. Without `--mcp-url`, run `cully setup --all` after installation to start the local memory stack and advisor daemon.
 
 ## macOS
 
@@ -19,14 +19,28 @@ Windows is not supported by the installer.
 
 ## Binary location and PATH
 
-| Install target | CLI path |
-| --- | --- |
-| Claude Code | `~/.claude/bin/cully` |
-| Codex | `~/.codex/bin/cully` |
-| Cursor | `~/.cursor/bin/cully` |
-| All agents or automatic detection | `~/.local/bin/cully` |
+The only installed binary is `~/.local/bin/cully`. Agent paths are symlinks:
 
-The installer adds the selected directory to your zsh or Bash startup file when needed. Open a new terminal before typing `cully`, or use the full path printed by the installer in your current terminal. A piped installer cannot update the shell that launched it. With a custom `CLAUDE_CONFIG_DIR`, `CODEX_HOME` or `CURSOR_CONFIG_DIR`, or another shell, add the printed directory to PATH yourself. Existing shell settings are preserved.
+| Agent | Symlink target |
+| --- | --- |
+| Claude Code: `~/.claude/bin/cully` | `~/.local/bin/cully` |
+| Codex: `~/.codex/bin/cully` | `~/.local/bin/cully` |
+| Cursor: `~/.cursor/bin/cully` | `~/.local/bin/cully` |
+
+The installer creates links for selected agents and existing agent directories, honoring `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `CURSOR_CONFIG_DIR`. Recognized older Cully copies become links; old Cully links are repointed without modifying their previous targets. Custom wrappers and system installations are preserved and reported. Later upgrades replace only the canonical binary, so all linked agents use the same version.
+
+Install logs show the previous PATH selection, downloaded version, each link created or migrated, preserved paths, and the next setup command. Download or checksum mismatches leave existing installations in place.
+
+The installer adds `~/.local/bin` to the zsh or Bash startup file, preserving existing settings. A piped installer cannot change its parent terminal's PATH or command cache. It explicitly prints the refresh and verification commands:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+hash -r
+command -v cully
+cully version
+```
+
+Expected path: `~/.local/bin/cully`; expected version: the version printed by the installer.
 
 ## Connect to a remote memory stack
 
@@ -52,4 +66,4 @@ The default installer downloads a prebuilt CLI from GitHub Releases and shows pr
 
 ## Check and adjust the installation
 
-Run `cully status` to see the advisor, agent integration, MCP connection and continuity hooks. Run `cully setup` for the full laptop setup, or `cully setup --agent AGENT --mcp-url URL` to install integrations and start the advisor with an existing server. If only the server connection is missing, use `cully mcp add --agent AGENT --url URL`; add `--oauth` when that server requires sign-in. Cully keeps unrelated agent settings. For client-specific sign-in and commands, see [connect an agent](/agents).
+Run `cully status` to see the advisor, agent integration, MCP connection and continuity hooks. Run `cully setup --all` for the full laptop setup, or `cully setup --agent AGENT --mcp-url URL` to install integrations and start the advisor with an existing server. If only the server connection is missing, use `cully mcp add --agent AGENT --url URL`; add `--oauth` when that server requires sign-in. Cully keeps unrelated agent settings. For client-specific sign-in and commands, see [connect an agent](/agents).

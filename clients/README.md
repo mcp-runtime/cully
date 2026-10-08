@@ -11,7 +11,7 @@ Use `claude` or `cursor` instead of `codex` as needed. This installs the local a
 To run your own private MCP service and connect the agent, install Docker Compose, then run:
 
 ```sh
-cully setup --agent codex
+cully setup --agent codex --all
 ```
 
 This starts PostgreSQL, Mem0, the data API and Cully MCP. OAuth is off by default. The MCP endpoint binds to loopback. See [self-hosting](../docs/hosting.md).
