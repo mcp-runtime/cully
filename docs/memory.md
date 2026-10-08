@@ -5,6 +5,8 @@ description: Save useful notes and find them later from connected coding agents.
 
 # Use Cully memory
 
+These tools remain owner-scoped. Team tasks and published project lessons use the separate [workspace workflow](/team-workflows); a `company` section or repository URL does not grant shared access. Workspace lessons currently use live project lookup, not Mem0 recall.
+
 After [starting Cully on your laptop](/hosting) or [connecting to a team server](/agents), your agent uses Cully MCP tools to save and find useful work across sessions.
 
 The installed Cully skill and session hooks ask Claude Code, Codex and Cursor to find relevant notes when substantive work starts and save a concise note when that work ends. A record can capture the project and task, approach, outcome, checks, blocker or missed step, and next step. When a client supplies a hook session ID, Cully gives the agent an opaque `session_ref` to save with the note. This distinguishes sessions without storing a raw client ID or transcript. The connected agent decides what is useful and calls `cully_log` with its own MCP identity. Codex asks you to trust newly installed hooks in `/hooks` before they run. The local advisor analyzes session signals for suggestions; it does not hold an OAuth token or upload session transcripts. You can still ask the agent to save, find or correct a note explicitly.

@@ -46,6 +46,14 @@ Immediate local rule warnings work offline; model-backed worker analysis and rem
 
 ## Public memory boundary
 
+Separate workspace tools coordinate team work. MCP requires OAuth and derives an issuer/subject-scoped principal for workspace operations; existing private-memory subject IDs are unaffected. Workspace requests travel through the same authenticated private API and repository interface. `internal/workspace` owns roles, task transitions, claims, review and publication for all transports.
+
+Migration 006 adds `cully_workspaces` and `cully_workspace_events`. A bounded JSON aggregate holds one team's members, projects, tasks, attempts, drafts and playbooks. PostgreSQL locks the team row, checks current membership and project capabilities, applies a versioned mutation and writes its audit event in the same transaction. Read results are authorized projections; the aggregate is never returned. Conflicts propagate as HTTP 409. This small-team design trades independent project write throughput for a simple transactional authorization boundary; see [deployment limits](/team-deployment#enable-the-team-workspace).
+
+Published lessons use live project lookup, without Mem0 or managed caches. Retrieval checks publication, lesson revision and source-task version. Author edits make a lesson private again; withdrawal/deletion marks dependent playbooks for review. Maintainers adopt only published lessons from completed, current tasks. Guidance changes invalidate pending review packets. Workers never publish records or edit instruction files.
+
+`cully workspace` calls public MCP tools. It accepts a short-lived user OAuth token from `CULLY_WORKSPACE_TOKEN` without persisting it; agents use their configured sign-in. Neither needs database or private data-service credentials. Local `cully task`, `cully handoff` and private memory stay separate from shared tasks and checkpoints.
+
 `cmd/cully-mcp` exposes tools through the official Go MCP SDK and Streamable HTTP. By default it serves one configured owner without OAuth, intended for loopback or a trusted private network. It does not contact an identity provider in that mode. With `--oauth` or `CULLY_MCP_AUTH_MODE=oauth`, `internal/identity` verifies the configured issuer, public resource audience, RS256 signature, expiration and subject. Each tool checks read or write permission.
 
 In OAuth mode, the verified subject becomes the owner. In no-OAuth mode, `CULLY_MCP_OWNER` is the fixed owner. Public tool inputs cannot choose a different owner. OAuth resource metadata is published only in OAuth mode and advertises the configured public resource rather than relying on a proxy-rewritten Host header.

@@ -44,6 +44,7 @@ func one(ctx context.Context, tx pgx.Tx, sql string, args ...any) (*memory.Entry
 	return decode(data)
 }
 func (s *Store) Execute(ctx context.Context, owner string, r memory.Request) (memory.Result, error) {
+	if r.Operation == "workspace" {return s.workspace(ctx,owner,*r.Workspace)}
 	if r.Operation == "recall" {
 		return s.Recall(ctx, owner, *r.Search)
 	}

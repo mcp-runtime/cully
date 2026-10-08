@@ -31,6 +31,15 @@ servers:
           key: CULLY_DATA_API_TOKEN
     namespace: mcp-servers
     tools:
+      # Discovered for contract parity; the server denies these without OAuth.
+      - name: cully_workspace_read
+        description: Team workspace requires OAuth
+        requiredTrust: low
+        sideEffect: read
+      - name: cully_workspace_write
+        description: Team workspace requires OAuth
+        requiredTrust: high
+        sideEffect: write
       - name: cully_log
         description: Save a source record
         requiredTrust: low

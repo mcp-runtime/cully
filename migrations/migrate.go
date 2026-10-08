@@ -19,11 +19,14 @@ var sessionsTasksSchema string
 //go:embed 005_validate_task_entry_type.sql
 var validateTaskEntryTypeSchema string
 
+//go:embed 006_workspaces.sql
+var workspaceSchema string
+
 func Apply(ctx context.Context, pool *pgxpool.Pool) error {
 	for _, m := range []struct {
 		version int
 		sql     string
-	}{{2, schema}, {3, sessionRefSchema}, {4, sessionsTasksSchema}, {5, validateTaskEntryTypeSchema}} {
+	}{{2, schema}, {3, sessionRefSchema}, {4, sessionsTasksSchema}, {5, validateTaskEntryTypeSchema}, {6, workspaceSchema}} {
 		if err := applyOne(ctx, pool, m.version, m.sql); err != nil {
 			return err
 		}

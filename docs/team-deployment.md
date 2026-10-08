@@ -5,7 +5,7 @@ description: Run one Cully stack for multiple people with private, per-user memo
 
 # Deploy Cully for a team
 
-This guide is for the company ops team running Cully for several people. For your own laptop, use the [quickstart](/quickstart). To see how a team uses agent sessions for project work, read [work across people and agents](/team-workflows). In a team deployment, everyone connects to the same public MCP endpoint, signs in through the company's identity provider, and accesses only their own records. The `personal` and `company` sections organize one person's records; they do not make records visible to coworkers.
+This guide is for the company ops team running Cully for several people. For your own laptop, use the [quickstart](/quickstart). Everyone connects to the same public MCP endpoint and signs in through the company's identity provider. Memory remains private to each person: `personal` and `company` organize records and do not share them. Separate [workspace operations](/team-workflows) provide explicitly authorized project tasks, checkpoints and published lessons.
 
 The memory services and the advisor are installed in different places:
 
@@ -99,6 +99,10 @@ After deployment, check that the Cully Deployment's updated and ready replicas m
 
 MCP uses a private service token to call the data API. The data API holds database and Mem0 credentials. Keep those credentials in the deployment's secret store; agents need only the public MCP URL and their own OAuth sign-in. The [architecture](/architecture) shows the service flow.
 
-## Proposed collaboration features
+## Enable the team workspace
 
-Shared hosting currently keeps each signed-in person's records private. [Team workspace design](/team-workspace) proposes project membership, shared tasks, handoffs and review evidence; [shared learning design](/shared-learning) proposes explicitly published lessons and playbooks. Deployment does not enable those planned features.
+Apply migration 006 before starting the updated data service. Gate `cully_workspace_read` with `tools:read` and `cully_workspace_write` with `tools:write`; both require OAuth even though they are discoverable in no-OAuth mode. Existing memory owners and notes are unchanged.
+
+Each person calls `whoami` to obtain their workspace principal, bound to the verified issuer and subject. The team creator becomes its first admin. Admins explicitly add team members and projects; project maintainers or team admins grant project roles. Team membership alone does not grant project reads. See [team workflows](/team-workflows).
+
+Changes and audit events commit together in PostgreSQL. Limits per team are 100 members, 50 projects, 500 tasks, 500 lessons, 200 playbooks and a 1 MiB serialized aggregate. Per-team writes serialize under a row lock. Scale and normalize storage before raising these limits. Audit events are operator-accessible database records; there is no user-facing audit export or web board yet.

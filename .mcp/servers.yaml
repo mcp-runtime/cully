@@ -27,6 +27,14 @@ servers:
             key: CULLY_DATA_API_TOKEN
       namespace: mcp-servers
       tools:
+        - name: cully_workspace_read
+          description: Read authorized team tasks and lessons
+          requiredTrust: low
+          sideEffect: read
+        - name: cully_workspace_write
+          description: Manage team access, tasks, review and explicit sharing
+          requiredTrust: high
+          sideEffect: write
         - name: cully_log
           description: cully_log tool
           requiredTrust: low

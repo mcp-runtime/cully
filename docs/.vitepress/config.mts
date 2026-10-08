@@ -3,7 +3,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 
 export default withMermaid(defineConfig({
   title: 'Cully',
-  description: 'Guides and reference for Cully, the intelligent workspace around your coding agents.',
+  description: 'Guides for Cully: project tasks, handoffs, review and shared learning across people and coding agents.',
   lang: 'en-US',
   appearance: false,
   cleanUrls: true,
@@ -35,6 +35,8 @@ export default withMermaid(defineConfig({
     siteTitle: 'Cully Docs',
     nav: [
       { text: 'Start', link: '/quickstart' },
+      { text: 'Solo', link: '/solo' },
+      { text: 'Team', link: '/team-workflows' },
       { text: 'How it works', link: '/how-cully-works' },
       { text: 'Terminal', link: '/terminal' },
       { text: 'Advisor', link: '/advisor' },
@@ -43,6 +45,8 @@ export default withMermaid(defineConfig({
     ],
     sidebar: [
       { text: 'Quickstart', link: '/quickstart' },
+      { text: 'Solo mode', link: '/solo' },
+      { text: 'Team mode', link: '/team-workflows' },
       {
         text: 'Core concepts',
         items: [
@@ -80,7 +84,7 @@ export default withMermaid(defineConfig({
           { text: 'Architecture', link: '/architecture' },
           { text: 'Development', link: '/development' },
           { text: 'Current capabilities', link: '/capabilities' },
-          { text: 'Product direction', link: '/product-direction' },
+          { text: 'Product vision', link: '/product-direction' },
           { text: 'Team workspace design', link: '/team-workspace' },
           { text: 'Shared learning design', link: '/shared-learning' },
           { text: 'Roadmap', link: '/roadmap' },

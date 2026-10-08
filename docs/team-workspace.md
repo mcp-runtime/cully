@@ -5,9 +5,13 @@ description: Proposed project coordination, agent handoffs, verified delivery an
 
 # Team workspace design
 
-::: warning Proposed, not shipped
-This is a product and implementation proposal. Cully already wraps coding agents and stores owner-scoped sessions, task links and memory. It does not yet provide shared project permissions, a team board, delegated execution or team learning. See [current capabilities](/capabilities) for available features and [team deployment](/team-deployment) for today's multi-user setup.
+::: info Design and implementation status
+The [manual-launch team workflow](/team-workflows) implements project roles, stable tasks and atomic claims, a CLI/MCP board/inbox, portable checkpoints, reported review packets and explicit project lessons/playbooks. The design below describes the broader target. Managed execution, automatic journal checkpoints, file-overlap warnings, configurable review policy, team-wide lessons, semantic shared lookup and web/tracker integrations remain planned. See [current capabilities](/capabilities) and [team deployment](/team-deployment).
 :::
+
+## Current implementation boundary
+
+Migration 006 adds bounded team aggregates and transactional audit events; it does not migrate or share private memory. Workspace identity is issuer/subject-scoped OAuth. Admin-managed team and project grants govern access. Tasks use optimistic versions and 30-minute attempt leases; agent launch and reclaim remain explicit. Acceptance requires passing reported evidence for each criterion and a noncontributing project maintainer. Published lessons use live project text lookup; edits/withdrawals invalidate playbooks and pending guidance-dependent review. See [workflow actions](/team-workflows) and [storage tradeoffs](/architecture#public-memory-boundary).
 
 ## The product promise
 
@@ -42,7 +46,7 @@ The first sellable slice combines the board, handoff and review packet. Shared l
 | Session | A concrete client session attached to an attempt, with a checkpoint and supported observed signals. |
 | Learning | An attributed lesson derived from work, with explicit visibility and source links. |
 
-A task can have multiple attempts and sessions. A crashed session does not delete its task. Existing owner-scoped task entries and session links remain the current implementation; this proposal does not pretend they already supply team assignments or shared lifecycle state. During implementation, map those entries to stable task IDs and preserve authored notes separately from authoritative task state. Existing private records remain private unless their owner explicitly shares selected material.
+A task can have multiple attempts and sessions. A crashed session does not delete it. Existing private task entries/session links remain owner-scoped; new workspace tasks supply stable shared lifecycle state separately. Linking private sessions to workspace attempts is explicit through opaque session references. Authored private notes are never migrated or shared automatically.
 
 ## One task from start to finish
 

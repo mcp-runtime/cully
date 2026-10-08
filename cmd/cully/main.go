@@ -12,7 +12,7 @@ import (
 
 var version = "dev"
 
-const help = `Cully — your coding agents need a copilot too.
+const help = `Cully — your agent's copilot, your team's workspace.
 
 Usage:
   cully setup --all [--agent claude|codex|cursor|all] [--oauth] [--prepare]
@@ -26,6 +26,8 @@ Usage:
                                           Diagnose a stuck session from recorded evidence
   cully suggestions                       Review suggested improvements
   cully task [NAME]                       Show or set the session task (--clear removes it)
+  cully workspace --mcp-url URL --input FILE
+                                         Team tasks, handoffs, review and shared lessons (OAuth)
   cully run AGENT [ARGS...]               Run any coding agent in the Cully terminal
   cully claude|codex|cursor [ARGS...]     Shortcuts for cully run claude, codex and cursor-agent
   cully timeline [--all] [--session ID] [--cwd DIR]
@@ -38,8 +40,9 @@ Usage:
   cully mcp add --url URL [--agent claude|codex|cursor] [--oauth]
   cully version
 
-Cully watches your coding sessions, remembers what matters and helps you steer
-Claude Code, Codex, Cursor and other coding agents.
+Solo: session health, advice, replay, handoff and private memory.
+Team: project tasks, ownership, checkpoints, review evidence and shared lessons.
+Works around Claude Code, Codex, Cursor and other coding agents.
 Docs: https://docs.cully.net
 `
 
@@ -78,6 +81,8 @@ func run(args []string) error {
 		return cully.RunRescue(os.Stdout, args[1:])
 	case "task":
 		return cully.RunTask(os.Stdout, args[1:])
+	case "workspace":
+		return runWorkspace(args[1:])
 	case "suggestions":
 		cully.RunList(os.Stdout)
 	case "run":

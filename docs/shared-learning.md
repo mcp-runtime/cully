@@ -5,9 +5,15 @@ description: Proposed private drafting, explicit team sharing and maintained pro
 
 # Shared learning design
 
-::: warning Proposed, not shipped
-Current records are owner-scoped. Shared visibility, team retrieval, playbooks and a learning worker are not available yet. This is one part of the [team workspace design](/team-workspace), not a separate replacement for task management.
+::: info Implementation and further design
+Workspace lessons support private drafts, explicit project publication, live authorized lookup, edit/unshare/delete and maintainer-adopted playbooks. Private memory remains owner-scoped. Team-wide visibility, semantic shared retrieval, background workers, ranking and managed caches are proposed below. This is part of the [team workspace design](/team-workspace).
 :::
+
+## Available workflow
+
+Use the [workspace actions](/team-workflows#draft-publish-and-reuse). Drafts record a project task ID/version and artifact revision. Publishing shares only that authored lesson with its project. Retrieval returns at most three lessons and three active playbooks, checks current access/publication/source versions directly, and never queries private notes or Mem0. Authors can see their own drafts while authorized.
+
+Editing makes a lesson private and refreshes its task reference. Unsharing or deletion removes it from shared retrieval. Dependent playbooks stop appearing. Maintainers adopt only published, current-source lessons from completed tasks; adoption creates versioned guidance but never edits instruction files. Storage and invalidation are transactional. The rest of this page describes extensions, not additional shipped behavior.
 
 ## Goal
 

@@ -38,7 +38,7 @@ This page separates what ships today from what is planned. Cully's other pages d
 | [Project memory](/memory) through MCP | Shipped | PostgreSQL source records, Mem0 semantic recall, owner-scoped. |
 | `cully_context` bounded recall | Shipped | Up to five short previews. |
 | Continuity hooks | Shipped | Claude Code and Codex start hooks; Claude Code and Cursor turn-end reminders. |
-| Shared learning across a team | Planned | Not available yet. |
+| Shared project learning | Partial | Private drafts, explicit publish/edit/unshare/delete, current-source lookup and maintainer adoption; no team-wide visibility, shared semantic indexing or learning worker. |
 
 ## Advise
 
@@ -60,6 +60,21 @@ This page separates what ships today from what is planned. Cully's other pages d
 | `cully rescue` | Shipped | Evidence and recovery steps; an optional headless advisor adds a probable cause. |
 | `cully status` session health | Shipped | |
 | [Session forensics](/use-cases) | Shipped | Flight-recorder postmortems, audit-grade session review and replayable playbooks, composed of timeline, replay, reconcile and handoff. |
+
+## Coordinate project work
+
+| Capability | Status | Notes |
+| --- | --- | --- |
+| Team/project access and stable tasks | Shipped | OAuth principals; explicit project roles; additive migration 006. Private memory stays separate. |
+| Board and decision inbox | Partial | CLI/MCP project views for tasks, blockers, reviews and stale work. No web view. |
+| Atomic claims and attempt leases | Shipped | Current-version writes; one claim winner; 30-minute lease and explicit reclaim. Manual agent launch. |
+| Portable team checkpoint | Shipped | Selected context, next step and branch/artifact references; no automatic journal uploads or process transfer. |
+| Evidence-backed task acceptance | Partial | Reported evidence for each criterion, exact revision/version and noncontributing maintainer approval. No independent CI attestation or configurable completion policy. |
+| Maintained project playbooks | Partial | Explicit adoption from completed tasks; withdrawal invalidates retrieval. Editing/archive controls remain planned. |
+| Audit events | Partial | Transactional database events for operators; no user-facing audit query/export. |
+| Managed agent execution | Planned | No autonomous dispatch, enforced tool budgets or automatic cancellation. |
+
+See [team workflows](/team-workflows) for inputs, limits and roles.
 
 ## Improve
 

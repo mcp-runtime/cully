@@ -64,7 +64,7 @@ func TestMCPToPrivateAPI(t *testing.T) {
 			t.Fatal(err)
 		}
 		tools, err := session.ListTools(ctx, nil)
-		if err != nil || len(tools.Tools) != 11 {
+		if err != nil || len(tools.Tools) != len(toolRegistrations()) {
 			t.Fatalf("tools=%v err=%v", tools, err)
 		}
 		result, err := session.CallTool(ctx, &sdk.CallToolParams{Name: "cully_log", Arguments: memory.LogInput{Summary: "Fixed OAuth", Assistant: "codex", Section: "company"}})
@@ -119,6 +119,16 @@ func TestNoOAuthUsesFixedOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer session.Close()
+	for _, name := range []string{"cully_workspace_read", "cully_workspace_write"} {
+		action := "whoami"
+		if name == "cully_workspace_write" {
+			action = "team_create"
+		}
+		denied, err := session.CallTool(ctx, &sdk.CallToolParams{Name: name, Arguments: map[string]any{"action": action, "name": "Example"}})
+		if err != nil || !denied.IsError {
+			t.Fatal("private no-OAuth mode enabled team identity")
+		}
+	}
 	result, err := session.CallTool(ctx, &sdk.CallToolParams{Name: "cully_log", Arguments: memory.LogInput{Summary: "No OAuth", Assistant: "codex", Section: "personal"}})
 	if err != nil || result.IsError {
 		t.Fatalf("tool result=%v error=%v", result, err)

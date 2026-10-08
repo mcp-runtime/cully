@@ -52,6 +52,8 @@ func (s *Store) Execute(ctx context.Context, owner string, input memory.Request)
 		return out, memory.ErrInvalid
 	case 403:
 		return out, memory.ErrForbidden
+	case 409:
+		return out, memory.ErrConflict
 	default:
 		return out, memory.ErrUnavailable
 	}

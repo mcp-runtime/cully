@@ -56,6 +56,8 @@ func Handler(service memory.Service, token string, ready func(context.Context) e
 				status = 400
 			} else if errors.Is(err, memory.ErrForbidden) {
 				status = 403
+			} else if errors.Is(err, memory.ErrConflict) {
+				status = 409
 			}
 			write(w, status, map[string]string{"error": http.StatusText(status)})
 			return

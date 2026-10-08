@@ -4,14 +4,16 @@
 
 # Cully
 
-**Your coding agents need a copilot too.**
+**Your agent's copilot. Your team's workspace.**
 
 [Website](https://cully.net) · [Documentation](https://docs.cully.net)
 
-Cully is an intelligent workspace around the coding agents you already use. It watches your coding sessions, remembers what matters, detects problems and helps you steer Claude Code, Codex, Cursor and other agents across sessions.
+Cully has two modes around Claude Code, Codex, Cursor and the agents you already use. **Solo** is a copilot for your coding agent and work environment: session health, advice, replay, handoff and private memory. **Team** connects project tasks, ownership, portable checkpoints, review evidence and explicitly shared lessons across people and agents.
+
+Start with [Solo mode](https://docs.cully.net/solo) or [Team mode](https://docs.cully.net/team-workflows). Both use the same installed CLI; team operations require OAuth and explicit project access. No new mode flag is needed, and solo notes stay private.
 
 ```text
-Observe  →  Understand  →  Remember  →  Advise  →  Improve
+Prepare  →  Work  →  Hand off  →  Review  →  Reuse
 ```
 
 Works across agents. Learns across sessions.
@@ -35,12 +37,18 @@ cully run claude      # or codex, cursor, or any agent on your PATH
 | **Handoff** | A structured summary so a different agent can continue without rebuilding context. |
 | **Rescue** | Evidence and recovery steps when a session is stuck. |
 | **Project memory** | Decisions, attempts, checks and next steps saved through MCP, found again by meaning with Mem0. |
+| **Team workspace** | Project access, a task board and inbox, atomic claims and portable checkpoints through CLI or MCP. |
+| **Review and shared learning** | Acceptance evidence tied to a revision, independent human approval, private lesson drafts and explicit project publication. |
 
 ```text
 ── Codex │ oauth-service:main │ 27m │ Context 63% │ ⚠ Loop 3x │ ● 2 unchecked ── Ctrl+] advisor ──
 ```
 
 Every value Cully shows is measured. A value with no data is left out, never guessed. See [current capabilities](https://docs.cully.net/capabilities) for exactly what ships today and what is only planned.
+
+## Team mode
+
+Team workflows require an OAuth-enabled server and explicit project membership. Start agents manually, checkpoint selected context, submit reported evidence and ask a project maintainer who did not contribute to approve it. Lessons stay private until their author publishes them; playbooks require a maintainer and a completed source task. See [team workflows](https://docs.cully.net/team-workflows) for actions and examples. Managed execution and automatic learning remain planned.
 
 ## Supported agents
 

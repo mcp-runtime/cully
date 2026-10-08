@@ -7,11 +7,13 @@ description: The Cully terminal, session journal, advisor and project memory aro
 
 Cully sits around the coding agents you already use. It does not replace them. It watches the work, understands the session, remembers what matters and helps you steer.
 
-> **Your coding agents need a copilot too.**
-> Cully observes your coding workflow, remembers what matters, detects problems and helps you steer coding agents across sessions.
+> **Your agent's copilot. Your team's workspace.**
+> Solo helps you steer your agent work environment. Team connects people and agents through durable project work.
+
+Choose [Solo mode](/solo) for session health, advice, replay and private memory, or [Team mode](/team-workflows) for shared tasks, ownership, handoffs, review evidence and published lessons. Both use the same installed CLI and services. Project access is explicit; local journals and solo notes never become shared automatically. The session diagram below describes the Solo foundation; [architecture](/architecture#public-memory-boundary) explains Team's separate authorized records.
 
 ```text
-Observe  →  Understand  →  Remember  →  Advise  →  Improve
+Prepare  →  Work  →  Hand off  →  Review  →  Reuse
 ```
 
 | Step | What happens | What does it today |

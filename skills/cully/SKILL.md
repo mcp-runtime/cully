@@ -10,6 +10,10 @@ Cully is the intelligent workspace around coding agents. It observes a session, 
 
 ## Know where you are running
 
+Cully has Solo and Team modes. Solo controls and private memory stay owner-scoped. Team actions use `cully_workspace_read` and `cully_workspace_write` with the agent's configured OAuth identity, explicit team/project IDs and project membership. Shared tasks are separate from `cully task` and `cully_session` links. Never infer sharing from a repository URL or the `company` section.
+
+For authorized team work, read `whoami`, `projects`, `board`, `inbox`, `task_get` or `lessons`. Claim/checkpoint/release a task explicitly, supply its current version, and refresh after a conflict. Start agents manually; do not auto-launch or reclaim an expired attempt. Review evidence is reported and tied to a revision. A task contributor cannot approve it; ask an authorized noncontributing maintainer to accept delivery. Draft lessons privately. Publish only when the user explicitly requests sharing and can review the exact content. Playbook adoption requires a project maintainer and a completed source task; it never changes instruction files automatically. See https://docs.cully.net/team-workflows for action inputs and limits.
+
 Cully's session features need the agent to run inside the Cully terminal, started by the user with `cully run claude`, `cully run codex`, `cully run cursor` or `cully run AGENT`. There the user sees a health bar and an advisor panel, and Cully records the session journal. Outside it, memory and the CLI commands below still work, but there is no journal for the current session.
 
 Never start `cully run` or `cully handoff AGENT` yourself. Both open an interactive terminal and will hang a tool call.

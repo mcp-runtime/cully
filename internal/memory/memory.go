@@ -12,11 +12,13 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/mcp-runtime/cully/internal/workspace"
 )
 
 var ErrInvalid = errors.New("invalid memory input")
 var ErrUnavailable = errors.New("memory service unavailable")
 var ErrForbidden = errors.New("insufficient permission")
+var ErrConflict = errors.New("record version conflict")
 var IST = time.FixedZone("Asia/Kolkata", 19800)
 
 type Entry struct {
@@ -137,6 +139,7 @@ type Session struct {
 	LastSeenAt time.Time `json:"last_seen_at"`
 }
 type Request struct {
+	Workspace  *workspace.Input `json:"workspace,omitempty"`
 	Operation  string           `json:"operation"`
 	Session    *SessionInput    `json:"session,omitempty"`
 	SessionGet *SessionRefInput `json:"session_get,omitempty"`
@@ -148,11 +151,12 @@ type Request struct {
 	Projects   *ProjectsInput   `json:"projects,omitempty"`
 }
 type Result struct {
-	Session  *Session  `json:"session,omitempty"`
-	Entry    *Entry    `json:"entry,omitempty"`
-	Entries  []Entry   `json:"entries,omitempty"`
-	Projects []Project `json:"projects,omitempty"`
-	Deleted  bool      `json:"deleted,omitempty"`
+	Workspace *workspace.Result `json:"workspace,omitempty"`
+	Session   *Session          `json:"session,omitempty"`
+	Entry     *Entry            `json:"entry,omitempty"`
+	Entries   []Entry           `json:"entries,omitempty"`
+	Projects  []Project         `json:"projects,omitempty"`
+	Deleted   bool              `json:"deleted,omitempty"`
 }
 type Repository interface {
 	Execute(context.Context, string, Request) (Result, error)
@@ -312,13 +316,39 @@ func limit(v *int, max int) {
 }
 func (r *Request) Validate() error {
 	n := 0
-	for _, b := range []bool{r.Log != nil, r.Search != nil, r.Recent != nil, r.ID != nil, r.Update != nil, r.Projects != nil, r.Session != nil, r.SessionGet != nil} {
+	for _, b := range []bool{r.Workspace != nil, r.Log != nil, r.Search != nil, r.Recent != nil, r.ID != nil, r.Update != nil, r.Projects != nil, r.Session != nil, r.SessionGet != nil} {
 		if b {
 			n++
 		}
 	}
 	if n != 1 {
 		return fmt.Errorf("%w: provide exactly one operation input", ErrInvalid)
+	}
+	if r.Workspace != nil {
+		if r.Operation != "workspace" {
+			return fmt.Errorf("%w: mismatched workspace input", ErrInvalid)
+		}
+		if err := r.Workspace.Validate(); err != nil {
+			return fmt.Errorf("%w: %v", ErrInvalid, err)
+		}
+		v := r.Workspace
+		if v.SessionRef != "" {
+			if err := sessionRef(&v.SessionRef); err != nil {
+				return err
+			}
+		}
+		texts := []string{v.Name, v.Principal, v.Repository, v.Agent, v.SessionRef, v.Branch, v.Checkpoint, v.NextStep, v.Revision, v.Artifact, v.Lesson, v.AppliesWhen, v.Limitations, v.Query}
+		texts = append(texts, v.Criteria...)
+		texts = append(texts, v.Steps...)
+		for _, e := range v.Evidence {
+			texts = append(texts, e.Check, e.Source, e.Revision)
+		}
+		for _, s := range texts {
+			if err := text(&s, false); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	checks := []error{}
 	switch r.Operation {

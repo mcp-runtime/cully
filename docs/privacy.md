@@ -55,6 +55,14 @@ The journal is local and automatic. Project memory is different: your connected 
 
 The local advisor does not hold your agent's OAuth credentials.
 
+## Explicit team sharing
+
+Workspace tasks, criteria, selected checkpoints, branch/artifact references and reported checks are visible to authorized project members. Separate workspace actions author this content; the journal and private memory are never imported automatically. Do not include transcripts or credentials. The same credential-pattern validation used for memory applies; it cannot guarantee arbitrary prose is safe to share.
+
+Draft lessons are visible only to their author while that author retains project access. `learning_publish` shares the lesson with its project; `learning_edit` makes it private again, and `learning_unshare` or `learning_delete` removes it from shared lookup immediately. Dependent playbooks stop appearing. There are no shared semantic projections or managed lesson caches yet. Membership removal denies subsequent reads and writes; Cully cannot erase material already read or exported.
+
+Audit events contain actor, action, target IDs and timestamp, without checkpoint or lesson text. Operators access them in the private database; they are not a coworker activity feed. Agent/session metadata is declared, with no inferred productivity scores or automatic journal uploads.
+
 ## Where file names can appear
 
 - In `cully replay`, `cully timeline`, `cully handoff` and `cully rescue` output on your machine.

@@ -1,12 +1,14 @@
 # Roadmap
 
-Cully is the intelligent workspace around your coding agents: a terminal for every agent, a private session journal, session intelligence, an advisor and owner-scoped project memory. See [architecture](architecture.md) for the current design and [current capabilities](capabilities.md) for what ships today.
+Cully has two modes: [Solo](/solo), a copilot for your coding agent and work environment, and [Team](/team-workflows), a shared workspace for project tasks, handoffs, review and lessons. See [architecture](architecture.md) and [current capabilities](capabilities.md) for the implementation.
 
 [Product direction](product-direction.md) describes feature proposals in detail, with what each reuses and what is missing. This page lists engineering work.
 
-## Team product proposal
+## Team workflow and next gates
 
-The [team workspace design](/team-workspace) proposes a staged delivery: team/project authorization and stable task state; a board, portable handoffs and evidence-backed review; [explicit shared learning](/shared-learning) and maintained playbooks; then capability-aware managed execution and measured improvements. The first team workflow uses manual agent launch. These stages are proposals without release dates and do not imply cross-member access exists today.
+The [manual-launch workflow](/team-workflows) implements project roles, atomic claims, task lifecycle/dependencies, board/inbox, checkpoints, reported evidence review, project lesson publication and playbook adoption. Private memory remains separate. Tests cover concurrent claims, access removal, private drafts, stale versions and self-approval.
+
+Next, run the [two-person cross-agent demo](/team-workspace#demo-and-commercial-validation) with real signed-in clients, and measure handoff/review usefulness. Add web views, configurable leases/review policies, playbook maintenance, authorized semantic projections and normalized storage as needs emerge. Managed execution remains gated on adapter-enforced capabilities; ranking and comparisons require measured outcomes. These additions have no release dates.
 
 ## Planned work
 
