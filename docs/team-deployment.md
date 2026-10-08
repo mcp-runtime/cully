@@ -5,31 +5,51 @@ description: Run one Cully stack for multiple people with private, per-user memo
 
 # Deploy Cully for a team
 
-This guide is for the company ops team running Cully for several people. For your own laptop, use the [quickstart](/quickstart). To see how a team uses agent sessions for project work, read [run projects with agents](/team-workflows). In a team deployment, everyone connects to the same public MCP endpoint, signs in through the company's identity provider, and accesses only their own records. The `personal` and `company` sections organize one person's records; they do not make records visible to coworkers.
+This guide is for the company ops team running Cully for several people. For your own laptop, use the [quickstart](/quickstart). To see how a team uses agent sessions for project work, read [work across people and agents](/team-workflows). In a team deployment, everyone connects to the same public MCP endpoint, signs in through the company's identity provider, and accesses only their own records. The `personal` and `company` sections organize one person's records; they do not make records visible to coworkers.
+
+The memory services and the advisor are installed in different places:
+
+| Location | Components |
+| --- | --- |
+| Each user's machine | Cully CLI, local advisor daemon, coding agent, Cully skill and session hooks. No local Mem0 or Docker stack is needed. |
+| Remote deployment | Public HTTPS endpoint for Cully MCP; private Cully data API, Mem0, source-note PostgreSQL and Mem0's pgvector database. These can run on different hosts. |
+
+The coding agent calls the remote MCP endpoint for shared memory. Its local hooks send session signals to the local advisor. Users' machines reach the public MCP and sign-in endpoints; the data API, Mem0 and databases communicate through private network connections.
 
 ```mermaid
 flowchart LR
-  Agent[Coding agent] -->|OAuth sign-in| Auth[MCP Auth or compatible server]
+  subgraph Laptop["Each user's machine"]
+    Agent[Coding agent] -->|Session signals| Advisor[Local Cully advisor]
+    Skill[Cully skill and hooks] --> Agent
+  end
+  subgraph Remote[Remote deployment]
+    MCP[Cully MCP] -->|Private service token| Data[Cully data API]
+    Data --> PG[(PostgreSQL source notes)]
+    Data --> Mem0[Self-hosted Mem0]
+    Mem0 --> Vector[(pgvector database)]
+  end
+  Agent -->|OAuth sign-in| Auth[MCP Auth or compatible server]
   Auth -->|OIDC or OAuth 2.0| IdP[Company identity provider]
   Agent -->|MCP tools and bearer token| MCP[Cully MCP]
-  MCP -->|Private service token| Data[Cully data API]
-  Data --> PG[(PostgreSQL source notes)]
-  Data --> Mem0[Self-hosted Mem0]
 ```
 
 ## Choose how to run the stack
 
 The [Docker Compose setup](/oauth#self-hosted-docker-with-mcp-auth) starts Cully, PostgreSQL, Mem0, MCP Auth and Caddy on one machine. It is the shortest deployment path.
 
-For Kubernetes or another container platform, Cully release tags publish matching `ghcr.io/mcp-runtime/cully-mcp`, `ghcr.io/mcp-runtime/cully-data` and `ghcr.io/mcp-runtime/cully-mem0` images. Use the [Compose file](https://github.com/mcp-runtime/cully/blob/main/deploy/self-hosted/compose.yaml) as the service and volume reference. Run the data image's `migrate` command before serving traffic. Give Mem0 its pgvector-enabled PostgreSQL database and persistent history volume. Keep both databases, Mem0 REST and the data API on private networks; expose only MCP through HTTPS.
+Cully releases provide the CLI and installer for users, plus matching `ghcr.io/mcp-runtime/cully-mcp`, `ghcr.io/mcp-runtime/cully-data` and `ghcr.io/mcp-runtime/cully-mem0` images for operators. Run the images with Compose, Kubernetes or another suitable platform, together or on separate hosts. The [Compose file](https://github.com/mcp-runtime/cully/blob/main/deploy/self-hosted/compose.yaml) is a reference, not a required layout. Run the data image's `migrate` command before serving traffic. Give Mem0 its pgvector-enabled PostgreSQL database and persistent history volume. Keep both databases, Mem0 REST and the data API on private networks; expose only MCP through HTTPS.
 
-| Service | Essential settings |
+### Connect the components
+
+| Connection | Configure |
 | --- | --- |
-| Cully MCP | `CULLY_DATA_API_URL`, private `CULLY_DATA_API_TOKEN`, `CULLY_MCP_AUTH_MODE=oauth`, exact `CULLY_AUTH_ISSUER`, `CULLY_AUTH_RESOURCE` and `CULLY_JWKS_URL`. |
-| Data API | `CULLY_DATABASE_URL`, the same `CULLY_DATA_API_TOKEN`, `CULLY_MEM0_URL` and `CULLY_MEM0_API_KEY`. |
-| Mem0 | Its pgvector/PostgreSQL settings, `ADMIN_API_KEY` matching the data API's Mem0 key, `JWT_SECRET` and persistent history volume. |
+| Agent → Cully MCP | Give each user the public HTTPS MCP URL with `--mcp-url`. For a team endpoint, set `CULLY_MCP_AUTH_MODE=oauth` and configure the exact public URL as `CULLY_AUTH_RESOURCE`, plus `CULLY_AUTH_ISSUER` and `CULLY_JWKS_URL`. |
+| Cully MCP → data API | Set `CULLY_DATA_API_URL` to the private data API base URL. Put the same `CULLY_DATA_API_TOKEN` on both services. |
+| Data API → source PostgreSQL | Set `CULLY_DATABASE_URL` to the private database connection URL and run the data image's `migrate` command. |
+| Data API → Mem0 | Set `CULLY_MEM0_URL` to the private Mem0 REST base URL. Set `CULLY_MEM0_API_KEY` to the same value as Mem0's `ADMIN_API_KEY`. |
+| Mem0 → pgvector PostgreSQL | Set Mem0's `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER` and `POSTGRES_PASSWORD`. Give Mem0 a `JWT_SECRET`; persist its database and history volume. |
 
-The [configuration reference](/configuration) has the full variable list and credential boundaries. Agents receive only the public MCP URL and their own OAuth sign-in; service secrets stay with the deployment.
+These connections are the deployment requirement; choose the hosts, platform and private network that fit your environment. The [configuration reference](/configuration) has the full variable list and credential boundaries. Agents receive only the public MCP URL and their own OAuth sign-in; service secrets stay with the deployment.
 
 ### Quick path with Docker Compose
 
@@ -78,3 +98,7 @@ After deployment, check that the Cully Deployment's updated and ready replicas m
    Then they sign in; for Codex, run `codex mcp login cully`. See [connect an agent](/agents) for its sign-in step.
 
 MCP uses a private service token to call the data API. The data API holds database and Mem0 credentials. Keep those credentials in the deployment's secret store; agents need only the public MCP URL and their own OAuth sign-in. The [architecture](/architecture) shows the service flow.
+
+## Proposed collaboration features
+
+Shared hosting currently keeps each signed-in person's records private. [Team workspace design](/team-workspace) proposes project membership, shared tasks, handoffs and review evidence; [shared learning design](/shared-learning) proposes explicitly published lessons and playbooks. Deployment does not enable those planned features.

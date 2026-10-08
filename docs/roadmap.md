@@ -1,15 +1,21 @@
 # Roadmap
 
-Cully provides local session guidance and owner-scoped shared memory through MCP. PostgreSQL stores source records, and Mem0 indexes summaries for semantic recall. See [architecture](architecture.md) for the current design.
+Cully is the intelligent workspace around your coding agents: a terminal for every agent, a private session journal, session intelligence, an advisor and owner-scoped project memory. See [architecture](architecture.md) for the current design and [current capabilities](capabilities.md) for what ships today.
+
+[Product direction](product-direction.md) describes feature proposals in detail, with what each reuses and what is missing. This page lists engineering work.
+
+## Team product proposal
+
+The [team workspace design](/team-workspace) proposes a staged delivery: team/project authorization and stable task state; a board, portable handoffs and evidence-backed review; [explicit shared learning](/shared-learning) and maintained playbooks; then capability-aware managed execution and measured improvements. The first team workflow uses manual agent launch. These stages are proposals without release dates and do not imply cross-member access exists today.
 
 ## Planned work
 
 1. Verify the [team deployment guide](team-deployment.md) with an agent sign-in, tool write and read, full-text search, and Mem0 recall.
-2. Measure advisor latency and project isolation before changing its job scheduling. Coalesce repeated work and use bounded concurrency where measurements justify it.
-3. Measure PostgreSQL search plans and Mem0 recall latency. Keep source-record hydration and owner checks in Cully as the system scales.
-4. Measure end-to-end token use, latency and continuity quality with and without `cully_context` and the installed hooks. Improve project and task identity and duplicate handling only from those results, without storing transcripts or giving the advisor an OAuth credential.
-5. Consider richer Mem0 extraction only with a clear source-to-fact attribution and edit/delete contract. Current projections embed authored summaries with `infer=false`.
+2. Measure end-to-end token use, latency and continuity quality with and without `cully_context`, the terminal and the installed hooks (Cully Bench). Improve project and task identity and duplicate handling only from those results, without storing transcripts or giving the advisor an OAuth credential.
+3. Add pre-tool hooks and a small rule format for guardrails that warn or ask before a risky tool call.
+4. Provide a lighter local install that runs the terminal, journal, replay, handoff and rescue without the Docker memory stack.
+5. Measure advisor latency and project isolation before changing its job scheduling. Coalesce repeated work and use bounded concurrency where measurements justify it.
+6. Measure PostgreSQL search plans and Mem0 recall latency. Keep source-record hydration and owner checks in Cully as the system scales.
+7. Consider richer Mem0 extraction only with a clear source-to-fact attribution and edit/delete contract. Current projections embed authored summaries with `infer=false`.
 
-6. Build team shared learning following the [shared learning design](shared-learning.md). Design explicit team sharing, so a lesson from one person's session can be offered to coworkers. It needs a visibility contract, attribution, and a way for the author to edit or withdraw a note before any suggestion crosses owners.
-
-Changes to storage and authorization need tests for owner isolation, recovery and failure behavior. The local advisor must remain usable when the hosted service is unavailable.
+Changes to storage and authorization need tests for owner isolation, recovery and failure behavior. The local advisor and terminal must remain usable when the hosted service is unavailable.

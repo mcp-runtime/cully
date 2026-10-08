@@ -28,8 +28,10 @@ Both sections belong to the same owner. `company` is a label for organizing your
 | `cully_update` | Correct a note. |
 | `cully_delete` | Remove a note. |
 | `cully_projects` | List projects with recent activity. |
+| `cully_session` | Start or update the current agent session with its project, branch and an optional task name. A new task name saves one `task` record linked to the session; the same name again keeps or relinks that record without adding a duplicate. Omitting the task keeps the current link; `clear_task` unlinks it while keeping the task record. |
+| `cully_session_get` | Get one session by its `session_ref`, including its task. |
 
-Tool results contain `entry`, `entries`, `projects` or `deleted`, depending on the operation. Read tools require `tools:read` and mutations require `tools:write` when OAuth is enabled.
+Tool results contain `entry`, `entries`, `projects` or `deleted`, depending on the operation. Read tools require `tools:read` and mutations require `tools:write` when OAuth is enabled. Tasks are saved through `cully_session`; `cully_log` rejects `entry_type: task` and points at it instead.
 
 PostgreSQL holds the source notes. `cully_search` and `cully_recent` read those records directly. Mem0 is part of the standard Cully stack and provides semantic candidates for `cully_recall`; Cully checks them against live, owned records before returning them. A new or edited note may take a little time to appear in recall, while text search remains available.
 
@@ -41,7 +43,7 @@ You do not have to ask for every handoff: the installed hooks and skill prompt t
 
 `cully_log` requires a summary, assistant and section. Entry types are `work`, `issue`, `learning` and `decision`; `work` is the default. Optional fields include project URL, opaque session reference, category, approach, outcome, issue, learning, next steps and tags. GitHub project URLs normalize to `https://github.com/owner/repo`.
 
-Text fields allow up to 8,000 characters and records allow up to 20 tags of 64 characters. Search and recent lookup can filter by project or `session_ref`; search also supports section, category, entry type and time. The reference groups Cully notes from one client session; it is not a link to reopen that client's conversation. Changes through `cully_update` affect only supplied fields. See [Mem0 recall](/mem0) for its indexing behavior.
+Text fields allow up to 8,000 characters and records allow up to 20 tags of 64 characters. Search and recent lookup can filter by project or `session_ref`; search also supports section, category, entry type and time. The reference groups Cully notes from one client session; it is not a link to reopen that client's conversation. Changes through `cully_update` affect only supplied fields, except that a task entry linked to a session keeps its session's section. See [Mem0 recall](/mem0) for its indexing behavior.
 
 GitHub HTTPS and SSH remotes are accepted for `project_url` and normalize to the same URL. Personal notes need no project URL. Available categories are `career`, `fitness`, `relationship`, `finance`, `food`, `water`, `reading`, `mood`, `check-in` and `other`. `occurred_at` accepts an RFC3339 timestamp with an offset; Cully uses the current time when it is omitted and returns times in Asia/Kolkata (`+05:30`). The source database stores instants as `timestamptz`.
 

@@ -1,0 +1,62 @@
+---
+title: Privacy
+description: Exactly what Cully records about your coding sessions, where it is stored and how to turn parts of it off.
+---
+
+# Privacy
+
+Cully watches your coding sessions, so it is specific about what it keeps. Your conversations are not Cully's database.
+
+```text
+Agent conversation
+       │
+       │  hooks send one small event per tool call
+       ▼
+┌──────────────────────────────┐
+│ Session journal (local)      │   when · agent · kind of tool
+│                              │   passed or failed
+│                              │   file path + operation
+│                              │   program + subcommand
+└──────────────────────────────┘
+
+Never recorded:  prompts · file contents · diffs · command arguments
+                 tool output · environment values · URLs · credentials
+```
+
+## The session journal
+
+| Recorded | Example | Why |
+| --- | --- | --- |
+| Time and agent | `10:34`, Claude Code | Timeline and replay |
+| Kind of tool | edit, check, search, memory call | Loop detection, status |
+| Passed or failed | check failed | Verification and risk |
+| Project-relative file path and operation | `internal/auth/resource.go`, edited | Replay and file activity. Taken from file tools only, never from shell text |
+| Program and recognized CLI subcommand of a command | `go test`, `git commit` | Replay |
+| A one-way hash of a normalized command | `3f9a1c07` | Spotting the same failing command repeated, without keeping the command |
+| Fixed notes | a loop was detected | Timeline |
+
+Paths outside the project are dropped, as are URLs and other schemes. Paths longer than 200 characters are dropped. Shell commands contribute a program and, when it matches a fixed list of CLI verbs, a subcommand. Free-form targets and script names are omitted.
+
+**Not recorded:** prompts, file contents, diffs, command arguments, tool output, environment values, URLs, credentials and transcripts.
+
+The journal is stored in your Cully directory on your machine, readable only by you, bounded in size per session, and pruned after 30 days or beyond the newest 40 sessions. It is never uploaded by Cully.
+
+## Turn path and command recording off
+
+```sh
+export CULLY_JOURNAL_PATHS=0
+```
+
+With this set, the journal still records the kind of tool and whether it passed. Replay then shows activity without file names or commands, and says so.
+
+## Project memory is separate
+
+The journal is local and automatic. Project memory is different: your connected agent chooses what is worth keeping and saves a short summary through its own MCP connection. Hooks do not upload transcripts. See [memory](/memory) for what a saved note contains.
+
+The local advisor does not hold your agent's OAuth credentials.
+
+## Where file names can appear
+
+- In `cully replay`, `cully timeline`, `cully handoff` and `cully rescue` output on your machine.
+- In the advisor's prompt only as part of an evidence block you can read in the command's output. File contents are never sent.
+- In a replay HTML file you generate. It contains paths and command names, no file contents. Treat it like a build log before you share it.

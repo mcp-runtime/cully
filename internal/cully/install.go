@@ -30,8 +30,10 @@ func InstallWithMCP(endpoint string, oauth bool, targets ...string) error {
 	cwd, _ := os.Getwd()
 	if len(targets) == 0 {
 		targets = detectedInstallTargets(cwd)
+		fmt.Printf("Detected coding agents: %s\n", strings.Join(targets, ", "))
 	}
 	for _, target := range expandInstallTargets(targets) {
+		fmt.Printf("Configuring %s hooks and controls in %s\n", target, cwd)
 		switch target {
 		case "claude":
 			if err := installClaude(); err != nil {
@@ -48,20 +50,22 @@ func InstallWithMCP(endpoint string, oauth bool, targets ...string) error {
 		default:
 			return fmt.Errorf("unknown install target %q (use claude, codex, cursor, or all)", target)
 		}
+		fmt.Printf("Installing the Cully skill for %s\n", target)
 		if err := installMemorySkill(target); err != nil {
 			return err
 		}
 		if endpoint != "" {
+			fmt.Printf("Connecting %s to Cully MCP at %s\n", target, endpoint)
 			if err := AddMCP(os.Stdout, target, endpoint, oauth); err != nil {
 				return err
 			}
 		}
 	}
+	fmt.Println("Starting or checking the advisor daemon")
 	if err := StartDaemonDetached(); err != nil {
-		fmt.Println("Advisor unavailable; rerun cully agent setup to retry:", err)
-	} else {
-		fmt.Println("Advisor started; inspect with cully status")
+		return fmt.Errorf("advisor startup failed: %w; rerun cully setup with the same options to retry", err)
 	}
+	fmt.Println("Advisor ready; inspect with cully status")
 	if endpoint == "" {
 		fmt.Println("Connect shared memory with: cully mcp add --url URL")
 	}
@@ -92,7 +96,10 @@ func installMemorySkill(target string) error {
 }
 
 func detectedInstallTargets(cwd string) []string {
-	ordered := []string{"claude", "codex", "cursor"}
+	var ordered []string
+	for _, spec := range agentCatalog() {
+		ordered = append(ordered, spec.ID)
+	}
 	var out []string
 	for _, id := range ordered {
 		if codingAgentPresent(id, cwd) {
@@ -107,24 +114,11 @@ func detectedInstallTargets(cwd string) []string {
 }
 
 func codingAgentPresent(id, cwd string) bool {
-	switch id {
-	case "claude":
-		return commandExists("claude") ||
-			dirExists(ConfigDir()) ||
-			fileExists(filepath.Join(cwd, "CLAUDE.md")) ||
-			dirExists(filepath.Join(cwd, ".claude"))
-	case "codex":
-		return commandExists("codex") ||
-			dirExists(CodexConfigDir()) ||
-			fileExists(filepath.Join(cwd, "AGENTS.md")) ||
-			dirExists(filepath.Join(cwd, ".codex"))
-	case "cursor":
-		return commandExists("cursor") ||
-			dirExists(CursorConfigDir()) ||
-			dirExists(filepath.Join(cwd, ".cursor"))
-	default:
+	spec, ok := lookupAgentSpec(id)
+	if !ok {
 		return false
 	}
+	return spec.Present(cwd)
 }
 
 func commandExists(name string) bool {
@@ -165,6 +159,7 @@ func installClaude() error {
 	setEventHook(m, "SessionStart", quote(exe)+" _internal continuity claude start", "continuity claude start")
 	setEventHook(m, "Stop", quote(exe)+" _internal continuity claude stop", "continuity claude stop")
 	setEventHook(m, "SessionEnd", quote(exe)+" _internal cleanup", "cleanup")
+	setClaudePaneSignalHook(m, exe)
 
 	if err := writeSettings(settingsPath, m); err != nil {
 		return err
@@ -175,7 +170,7 @@ func installClaude() error {
 		fmt.Println("Registered /cully (status · suggestions · apply).")
 	}
 	fmt.Printf("\033[32mInstalled.\033[0m Registered cully in %s\n", settingsPath)
-	fmt.Println("Restart Claude Code (or run /hooks) so advisor and continuity hooks load. The status bar is live immediately.")
+	fmt.Println("Restart Claude Code (or run /hooks) so advisor and continuity hooks load. The status bar is live immediately.\nFor the terminal with live signals, start Claude with: cully run claude")
 	fmt.Println("Accept a suggestion: cully apply <n>  (updates agent instructions, MCP, skills after you confirm)")
 	return nil
 }
@@ -190,8 +185,10 @@ func installCodex(cwd string) error {
 	if err := writeSharedSkill(cwd, "cully", cullySkill()); err != nil {
 		return err
 	}
-	if err := upsertCodexStatusLine(codexConfigPath()); err != nil {
-		return fmt.Errorf("configure Codex status line: %w", err)
+	// Older Cully installs added a managed native footer. The status view is
+	// now the only Cully display for Codex; preserve user-owned footer settings.
+	if err := removeCodexStatusLine(codexConfigPath()); err != nil {
+		return fmt.Errorf("remove legacy Codex status line: %w", err)
 	}
 	if err := installCodexContinuityHooks(); err != nil {
 		return fmt.Errorf("configure Codex continuity hooks: %w", err)
@@ -202,9 +199,9 @@ func installCodex(cwd string) error {
 		fmt.Printf("Preserved existing Codex prompt -> %s\n", codexPromptPath())
 	}
 	fmt.Printf("\033[32mInstalled.\033[0m Registered Cully for Codex in %s\n", cwd)
-	fmt.Printf("Codex status line configured in %s\n", codexConfigPath())
 	fmt.Printf("Codex continuity hooks configured in %s; review them with /hooks.\n", codexHooksPath())
 	fmt.Printf("Codex cully prompt available as /prompts:cully -> %s\n", codexPromptPath())
+	fmt.Println("For the live status view, start Codex with: cully run codex")
 	return nil
 }
 
@@ -226,6 +223,7 @@ func installCursor(cwd string) error {
 	fmt.Printf("\033[32mInstalled.\033[0m Registered shared Cully skill for Cursor in %s\n", sharedSkillPath(cwd, "cully"))
 	fmt.Printf("Cursor continuity hooks configured in %s\n", cursorHooksPath())
 	fmt.Printf("Cursor cully command available as /cully -> %s\n", cursorCommandPath(cwd))
+	fmt.Println("For the live status view, start Cursor with: cully run cursor")
 	return nil
 }
 
@@ -300,6 +298,7 @@ func uninstallClaude() error {
 		removeEventHook(m, "SessionStart", quote(exe)+" _internal continuity claude start", "continuity claude start")
 		removeEventHook(m, "Stop", quote(exe)+" _internal continuity claude stop", "continuity claude stop")
 		removeEventHook(m, "SessionEnd", quote(exe)+" _internal cleanup", "cleanup")
+		removeEventHook(m, "PostToolUse", "", "pane-signal claude")
 		if err := writeSettings(settingsPath, m); err != nil {
 			return err
 		}
@@ -450,6 +449,16 @@ func setEventHook(m map[string]any, event, cmd, sub string) {
 	})
 	hooks[event] = list
 	m["hooks"] = hooks
+}
+
+// setClaudePaneSignalHook registers the asynchronous PostToolUse hook that
+// feeds the Cully terminal panel.
+func setClaudePaneSignalHook(m map[string]any, exe string) {
+	setEventHook(m, "PostToolUse", quote(exe)+" _internal pane-signal claude", "pane-signal claude")
+	groups := toList(m["hooks"].(map[string]any)["PostToolUse"])
+	handler := toList(groups[len(groups)-1].(map[string]any)["hooks"])[0].(map[string]any)
+	handler["async"] = true
+	handler["timeout"] = 5
 }
 
 func removeEventHook(m map[string]any, event, cmd, sub string) {

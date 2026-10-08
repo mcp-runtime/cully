@@ -2,13 +2,13 @@
 # Run the documented laptop path on an isolated GitHub runner: install, setup,
 # connect Codex, use the MCP tools, and remove the disposable local stack.
 set -euo pipefail
-: "${RUNNER_TEMP:?customer setup E2E runs only on an isolated CI runner}"
+: "${RUNNER_TEMP:?setup E2E runs only on an isolated CI runner}"
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 original_gopath="$(go env GOPATH)"
 original_gocache="$(go env GOCACHE)"
 stack_tag="$(git -C "$repo_root" describe --tags --abbrev=0 --match 'v[0-9]*')"
-[[ "$stack_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "No stable Cully release tag for the customer setup test" >&2; exit 1; }
+[[ "$stack_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "No stable Cully release tag for the setup test" >&2; exit 1; }
 
 e2e_root="$(mktemp -d "$RUNNER_TEMP/cully-e2e.XXXXXX")"
 trap 'rm -rf -- "$e2e_root"' EXIT
@@ -27,7 +27,7 @@ export GOPATH="$original_gopath"
 export GOCACHE="$original_gocache"
 export PATH="$CODEX_HOME/bin:$PATH"
 export SHELL=/bin/bash
-export CULLY_E2E_MCP_URL=http://127.0.0.1:8080/mcp
+export CULLY_E2E_MCP_URL=http://127.0.0.1:3393/mcp
 cli="$CODEX_HOME/bin/cully"
 stack_dir="$HOME/.cully/self-hosted/releases/$stack_tag/deploy/self-hosted"
 
@@ -53,21 +53,28 @@ test -x "$cli"
 if [[ "${CULLY_E2E_PUBLISHED_CLI:-false}" == true ]]; then
   test "$("$cli" version)" = "cully ${stack_tag#v}"
 else
-  # The installer starts an advisor. The isolated home has no Claude settings;
-  # this supported command stops that advisor before replacing its executable.
+  # Older published installers start an advisor. Stop it before replacing the
+  # executable; the isolated home has no user-owned Claude settings.
   "$cli" uninstall claude
   install -m 0755 "$candidate" "$cli"
+  # Candidate tests must exercise this checkout's CLI AND stack script. The
+  # published mode below still downloads the matching public release archive.
+  mkdir -p "$HOME/.cully/self-hosted/releases/$stack_tag"
+  git -C "$repo_root" archive HEAD | tar -x -C "$HOME/.cully/self-hosted/releases/$stack_tag"
 fi
 
 # This must work from a clean home without running --prepare first. The CLI
 # downloads the matching public release archive and runs its setup script.
-"$cli" setup --agent codex
-curl --fail --retry 12 --retry-delay 2 --retry-all-errors http://127.0.0.1:8080/healthz
+"$cli" setup
+curl --fail --retry 12 --retry-delay 2 --retry-all-errors http://127.0.0.1:3393/healthz
 test -f "$CULLY_CONFIG_PATH"
 test -f "$CODEX_HOME/skills/cully/SKILL.md"
 grep -Fq '[mcp_servers.cully]' "$CODEX_HOME/config.toml"
-grep -Fq 'http://127.0.0.1:8080/mcp' "$CODEX_HOME/config.toml"
-"$cli" status
+grep -Fq 'http://127.0.0.1:3393/mcp' "$CODEX_HOME/config.toml"
+"$cli" status | tee "$e2e_root/status"
+grep -Fq 'cully advisor daemon running' "$e2e_root/status"
+test -f "$HOME/AGENTS.md"
+test ! -f "$stack_dir/AGENTS.md"
 "$cli" suggestions
 
 cd "$repo_root"
@@ -77,7 +84,7 @@ cd "$HOME"
 "$cli" setup --prepare
 test -f "$HOME/.cully/self-hosted/config/.env"
 
-# Finish the same customer journey with the supported uninstall command.
+# Finish the same flow with the supported uninstall command.
 "$cli" uninstall --purge-data
 test ! -e "$cli"
 test ! -e "$CULLY_CONFIG_PATH"

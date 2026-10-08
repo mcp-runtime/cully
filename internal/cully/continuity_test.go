@@ -33,8 +33,12 @@ func TestContinuityHookStartAndStop(t *testing.T) {
 			t.Fatalf("%s start: %#v", agent, start)
 		}
 		stop := hookOutput(t, agent, "stop", `{"session_id":"native-session-a","last_assistant_message":"I fixed the project configuration, tested the setup and documented the remaining issue for the next session."}`)
-		if stop["decision"] != "block" || !strings.Contains(stop["reason"].(string), "cully_log") || !strings.Contains(stop["reason"].(string), ref) {
-			t.Fatalf("%s stop: %#v", agent, stop)
+		if agent == "claude" {
+			if stop["decision"] != "block" || !strings.Contains(stop["reason"].(string), "cully_log") || !strings.Contains(stop["reason"].(string), ref) {
+				t.Fatalf("%s stop: %#v", agent, stop)
+			}
+		} else if stop != nil {
+			t.Fatalf("Codex stop must not block: %#v", stop)
 		}
 		if got := hookOutput(t, agent, "stop", `{"stop_hook_active":true,"last_assistant_message":"I fixed the project configuration, tested the setup and documented the remaining issue for the next session."}`); got != nil {
 			t.Fatalf("%s stop looped: %#v", agent, got)
@@ -83,6 +87,9 @@ func TestContinuityHookConfigPreservesForeignHooks(t *testing.T) {
 			t.Fatal(err)
 		}
 		initial := `{"version":1,"hooks":{"Stop":[{"hooks":[{"type":"command","command":"user-hook"}]}],"stop":[{"command":"user-hook"}]}}`
+		if path == codexHooksPath() {
+			initial = `{"version":1,"hooks":{"Stop":[{"hooks":[{"type":"command","command":"user-hook"}]},{"hooks":[{"type":"command","command":"cully _internal continuity codex stop"}]}]}}`
+		}
 		if err := os.WriteFile(path, []byte(initial), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -97,12 +104,15 @@ func TestContinuityHookConfigPreservesForeignHooks(t *testing.T) {
 	}
 	for _, path := range []string{codexHooksPath(), cursorHooksPath()} {
 		b, err := os.ReadFile(path)
-		want := 2
+		want := 1
 		if path == cursorHooksPath() {
 			want = 4
 		}
 		if err != nil || strings.Count(string(b), "_internal continuity") != want {
 			t.Fatalf("duplicate/missing continuity hooks in %s: %v %s", path, err, b)
+		}
+		if path == codexHooksPath() && (strings.Count(string(b), "_internal codex-signal") != 1 || !strings.Contains(string(b), `"async": true`)) {
+			t.Fatalf("missing or duplicate asynchronous Codex signal hook: %s", b)
 		}
 	}
 	if err := uninstallCodexContinuityHooks(); err != nil {
@@ -113,7 +123,7 @@ func TestContinuityHookConfigPreservesForeignHooks(t *testing.T) {
 	}
 	for _, path := range []string{codexHooksPath(), cursorHooksPath()} {
 		b, err := os.ReadFile(path)
-		if err != nil || !strings.Contains(string(b), "user-hook") || strings.Contains(string(b), "_internal continuity") {
+		if err != nil || !strings.Contains(string(b), "user-hook") || strings.Contains(string(b), "_internal continuity") || strings.Contains(string(b), "_internal codex-signal") {
 			t.Fatalf("foreign hook lost in %s: %v %s", path, err, b)
 		}
 	}

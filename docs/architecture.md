@@ -4,8 +4,12 @@ Cully has one Go module with three agent/data entry points and a separate websit
 
 ```mermaid
 flowchart LR
-  A[Claude / Codex / Cursor] --> L[Cully CLI and daemon]
-  L --> S[Local diagnostics and suggestions]
+  A[Claude / Codex / Cursor / any agent] -->|runs inside| T[Cully terminal]
+  A -. tool events .-> H[Hooks]
+  H --> J[(Session journal)]
+  T --> J
+  J --> I[Session intelligence]
+  I --> S[Advisor, replay, handoff, rescue, status]
   A -->|Private no-OAuth or OAuth| M[Cully MCP]
   M -->|Authenticated private API| D[Cully data API]
   D --> P[(PostgreSQL source records)]
@@ -14,11 +18,31 @@ flowchart LR
   D -->|Semantic recall| F
 ```
 
+See [how Cully works](/how-cully-works) for the product-level picture.
+
 ## Local session companion
 
-`cmd/cully` uses the imported session-control implementation in `internal/cully`. It renders instruments, discovers capabilities, runs advisory analysis, manages suggestions and records diagnostic session counters. Claude has the rich command-backed status line and hooks. Codex and Cursor use their available native integrations.
+`cully setup` owns the complete local startup: Docker memory services, agent integrations in the invoking project, and the advisor daemon. `--mcp-url` uses an existing memory server; `--prepare` only prepares editable configuration. Startup failures return a nonzero exit status.
 
-The local advisor works offline. It does not run a background transcript scanner or maintain a second personal/project memory store. Local snapshots and diagnostic logs support session controls. Managed session and stop hooks prompt Claude Code, Codex and Cursor to find relevant prior work and save concise task summaries through each agent's own Cully MCP connection. They derive an opaque `session_ref` from the client's hook session ID when available, so source notes can be grouped by session without storing the raw ID. The `cully_context` MCP tool projects a bounded preview from the same validated, owner-scoped search and recent operations; `cully_get` retrieves full details on demand. The hooks do not upload raw transcripts or give the advisor the agent's OAuth token.
+`cmd/cully` uses the session-control implementation in `internal/cully`. It runs agents in the terminal, renders instruments, runs advisory analysis, manages suggestions and records the session journal.
+
+**The Cully terminal.** `cully run AGENT` starts the agent in a pseudo-terminal that Cully owns. Cully emulates the agent's screen above an expandable panel, so the agent's clear and cursor codes cannot erase the status area. One implementation serves every agent. An agent definition supplies only the executable, its launch arguments and, for Codex, a reader for the native footer. An agent Cully does not know yet is treated as an executable with that name. The panel grows only as far as its content needs and keeps at least 12 agent rows on normal screens and 8 on short ones. Exiting the wrapper stops the agent's process group. It does not create a detached tmux session.
+
+**Tool events and the journal.** An asynchronous `PostToolUse` hook (`cully _internal pane-signal AGENT`) sends one event per tool call. It is inactive outside the terminal. Events become single-letter counters for the panel and one line in a per-session journal: time, agent, kind of tool, pass or fail, a project-relative file path and operation, the program and recognized subcommand of a command, and a one-way hash of the normalized command. Prompts, file contents, command arguments and output are never recorded. See [privacy](/privacy).
+
+**Session intelligence.** Loop detection, verification state, the health bar, the risk label, `cully status`, `timeline`, `replay`, `handoff` and `rescue` are all derived from the journal, with live Git state read at run time and never stored. See [session intelligence](/session-intelligence).
+
+**Per-agent signals.** Codex supplies its native footer, read from the rendered rows in memory. Claude Code supplies context pressure through a hook-fed snapshot, and its visible status line stays silent inside the terminal. Cursor supplies shell, file-edit and MCP events. Codex may run hooks in a persistent app server, so its SessionStart hook binds an opaque session key to the active terminal and ignores `PostToolUse` signals from other sessions. Setup removes only legacy Cully-managed native footer settings and leaves user-owned settings alone. Unknown instruments are shown as unavailable, never borrowed from another agent.
+
+The model-backed advisor has a shared prompt and report pipeline with agent-specific CLI adapters. Signals carry an `agent` field through the job; absent legacy values default to Claude. Claude runs in print mode, Codex runs an ephemeral read-only `exec` process, and Cursor runs in print/ask mode. Unsupported agents fail explicitly rather than silently using another host. The worker runs in the originating project, strips foreground session bindings, and prevents recursive continuity/analysis hooks.
+
+The shared prompt requests bounded owner/project-scoped Cully recall through the selected CLI's configured MCP connection, with semantic recall through Cully when text lookup misses. A concrete capability or current-documentation gap can trigger a separate targeted web-research step. The worker reports recall as checked, unavailable, skipped or unconfirmed; these source markers describe the worker's reported tool use, rather than independent proof of live service access. Claude/Codex restrict Cully to read-only tools. Cursor relies on ask mode and the shared no-edit/no-memory-write instructions. Durable writes remain the foreground agent's responsibility.
+
+Claude retains its richer analysis-hook signals. Codex dispatches bounded context/tool metadata from the wrapper and merges worker findings with its immediate local warnings. Cursor dispatches coarse continuity-stop metadata without opening transcripts. Unknown instruments are not borrowed from another agent. The CLI/model and configured recall/research tools must be available for the worker to use them; local rule warnings do not require successful model analysis.
+
+Durable handoffs and reusable optimization notes use the authenticated Cully MCP memory boundary: PostgreSQL is the source of truth and Mem0 supplies semantic indexing/recall. The foreground agent owns durable writes, and workers use their host CLI's configured connection for read-only recall. The local daemon does not receive an agent OAuth token or call Mem0 directly.
+
+Immediate local rule warnings work offline; model-backed worker analysis and remote recall/research require their configured services. The advisor does not run a background transcript scanner or maintain a second personal/project memory store. Transient local counters, snapshots and diagnostic logs support offline session controls and current warnings. They are live session inputs, not a duplicate durable memory database. Managed session hooks prompt Claude Code and Codex to find relevant prior work; Claude Code and Cursor also have turn-end hooks that ask for concise task summaries through each agent's own Cully MCP connection. Codex relies on its Cully skill for the handoff and has no blocking stop hook. Hooks derive an opaque `session_ref` from the client's session ID when available, so source notes can be grouped by session without storing the raw ID. The `cully_context` MCP tool projects a bounded preview from the same validated, owner-scoped search and recent operations; `cully_get` retrieves full details on demand. The hooks do not upload raw transcripts or give the advisor the agent's OAuth token.
 
 ## Public memory boundary
 

@@ -436,9 +436,8 @@ func TestInstallCodexAndCursorProjectFiles(t *testing.T) {
 	if err != nil || !strings.Contains(string(prompt), "cully:codex-command:start") {
 		t.Fatalf("Codex install should write the managed cully prompt: %v\n%s", err, prompt)
 	}
-	config, err := os.ReadFile(codexConfigPath())
-	if err != nil || !strings.Contains(string(config), "status_line = "+codexStatusLineItems) {
-		t.Fatalf("Codex install should configure the native status line: %v\n%s", err, config)
+	if _, err := os.Stat(codexConfigPath()); !os.IsNotExist(err) {
+		t.Fatalf("Codex install should leave native footer configuration alone: %v", err)
 	}
 	cursorCommand, err := os.ReadFile(cursorCommandPath(dir))
 	if err != nil || !strings.Contains(string(cursorCommand), "/cully status") {
@@ -507,51 +506,38 @@ func TestCodexInstallPreservesExistingPromptAndStatusLine(t *testing.T) {
 	}
 }
 
-func TestCodexStatusLineConfigLifecycle(t *testing.T) {
+func TestCodexManagedStatusLineMigration(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "config.toml")
+	t.Setenv("CODEX_HOME", filepath.Join(dir, "codex-home"))
+	path := codexConfigPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	legacyBlock := codexStatusMarkerStart + "\nstatus_line = [\"current-dir\"]\n" + codexStatusMarkerEnd
 
-	if err := upsertCodexStatusLine(path); err != nil {
+	if err := os.WriteFile(path, []byte("[tui]\n"+legacyBlock+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := installCodex(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("managed-only native footer should be removed on setup: %v", err)
+	}
+
+	existing := "model = \"gpt-5\"\n\n[tui]\nnotifications = true\n" + legacyBlock + "\n\n[history]\npersistence = \"save-all\"\n"
+	if err := os.WriteFile(path, []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := installCodex(dir); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Count(string(b), codexStatusMarkerStart) != 1 || !strings.Contains(string(b), "[tui]") {
-		t.Fatalf("unexpected new Codex config: %s", b)
-	}
-	if err := upsertCodexStatusLine(path); err != nil {
-		t.Fatal(err)
-	}
-	b2, _ := os.ReadFile(path)
-	if strings.Count(string(b2), codexStatusMarkerStart) != 1 {
-		t.Fatalf("status line install is not idempotent: %s", b2)
-	}
-	if err := removeCodexStatusLine(path); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Fatalf("managed-only Codex config should be removed: %v", err)
-	}
-
-	existing := "model = \"gpt-5\"\n\n[tui]\nnotifications = true\n\n[history]\npersistence = \"save-all\"\n"
-	if err := os.WriteFile(path, []byte(existing), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := upsertCodexStatusLine(path); err != nil {
-		t.Fatal(err)
-	}
-	b, _ = os.ReadFile(path)
-	if !strings.Contains(string(b), "notifications = true") || !strings.Contains(string(b), "[history]") || !strings.Contains(string(b), "status_line = "+codexStatusLineItems) {
-		t.Fatalf("status line insertion damaged TOML tables: %s", b)
-	}
-	if err := removeCodexStatusLine(path); err != nil {
-		t.Fatal(err)
-	}
-	b, _ = os.ReadFile(path)
-	if strings.Contains(string(b), codexStatusMarkerStart) || !strings.Contains(string(b), "notifications = true") || !strings.Contains(string(b), "[history]") {
-		t.Fatalf("status line removal damaged user config: %s", b)
+	if strings.Contains(string(b), codexStatusMarkerStart) || strings.Contains(string(b), "status_line =") || !strings.Contains(string(b), "notifications = true") || !strings.Contains(string(b), "[history]") {
+		t.Fatalf("legacy footer removal damaged user config: %s", b)
 	}
 }
 

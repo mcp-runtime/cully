@@ -1,60 +1,40 @@
 ---
-title: Run projects with coding agents
-description: How a team uses coding-agent sessions, Cully memory and the advisor to manage project work, including production issues.
+title: Work across people and agents
+description: What Cully supports today and the proposed workflow for shared project work.
 ---
 
-# Run projects with coding agents
+# Work across people and agents
 
-Cully treats the coding agent your team already uses as the way work gets done and recorded. A person starts a session in Claude Code, Codex or Cursor. The Cully skill and hooks make that session start from earlier notes, and save a short record of what happened before it ends. There is no separate workflow engine to build: the agent does the work, and the skill tells it how to keep the project's trail.
+Cully already helps one person continue work across coding agents. A team deployment gives each signed-in person private memory on a shared service. The next step is shared project coordination: a task can pass between people and agents while its outcome, evidence and lessons stay connected.
 
-This page explains how that works today, how it fits a team, and which parts are still a direction rather than a feature. For the mechanics of one session, see [keep sessions focused](/session-optimization) and [memory](/memory).
+## What works today
 
-## What an agent does in a session
+| Capability | Current behavior |
+| --- | --- |
+| Run an agent | `cully run AGENT` provides the terminal and supported session signals. |
+| Track a session/task link | `cully_session` stores an owner-scoped session and optional task; `cully_session_get` retrieves it. |
+| Save useful work | `cully_log` records decisions, attempts, outcomes and next steps. |
+| Continue with another agent | Your agents can retrieve your authorized notes through `cully_context` and `cully_get`. |
+| Inspect an interrupted session | `cully replay`, `cully handoff` and `cully rescue` use the local session journal. |
+| Host for multiple users | OAuth identifies each user's private records. The `company` label does not share records with coworkers. |
 
-| Moment | What the agent does | Cully tool |
-| --- | --- | --- |
-| Task starts | Looks up a few short notes about this project and task, and opens a full note only when it matters. | `cully_context`, `cully_get` |
-| A blocker or choice appears | Records the reusable part as it happens. | `cully_log` with `issue`, `learning` or `decision` |
-| Work finishes | Saves one concise note: what changed, why, what worked, what failed, and what should happen next. | `cully_log` with `work` |
-| Someone asks about past work | Searches the owner's notes and cites a date or record ID. | `cully_search`, `cully_recall`, `cully_projects` |
+Task links are not yet a shared task board, dependency graph or assignment system. A local handoff does not automatically publish journal data to teammates. Consult [memory](/memory), [session intelligence](/session-intelligence) and [team deployment](/team-deployment) for the shipped behavior.
 
-Because every agent calls the same MCP tools, a note written from Codex can start a session in Claude Code. The `next steps` field is the handoff: the next session reads it instead of rereading a conversation.
+## The proposed team workflow
 
-## Example: fixing a production issue
+::: warning Design, not available yet
+Shared tasks, cross-member handoffs, review packets and team playbooks below are proposals. The [team workspace design](/team-workspace) defines implementation stages and access rules.
+:::
 
-1. A developer starts a session and describes the incident. The agent calls `cully_context` for the service and finds a note from an earlier outage.
-2. While debugging, the agent logs the cause as an `issue` and the check that confirmed it as a `learning`.
-3. The fix ships. The agent saves a `work` note with the change, the verification and a follow-up, such as an alert that should exist.
-4. The next day, the same person or another of their agents asks what happened with the service. The agent searches the notes and answers with the dates and records behind it.
+1. A lead creates a project task with a clear outcome and acceptance criteria.
+2. A member claims it, prepares authorized project context and starts their preferred agent.
+3. Cully links the attempt to the task and records a bounded checkpoint when work stops or needs a decision.
+4. Another authorized member resumes with that checkpoint in a different agent. The original human owner remains accountable until ownership is explicitly changed.
+5. A reviewer sees the result, artifact revision, check evidence and missing criteria before accepting delivery.
+6. The author chooses whether to share a reusable lesson. A maintainer can adopt it into a project playbook for later tasks.
 
-The same shape works for planning, review, release and support tasks. The role changes, but the loop stays the same: look up context, do the work, record the result, hand off.
+For example, one teammate investigates a production authentication failure, another implements the fix, and a reviewer accepts the verified PR. A later task retrieves the approved lesson without exposing anyone's private notes or transcripts.
 
-## Where optimization fits
+## Where to start
 
-A session that records its work can also be improved. The local advisor reads the signals your agent exposes, such as context pressure, repeated tool faults or searches, and a missing verifier. It suggests a project instruction, skill or MCP connection that would help. You preview a suggestion with `cully apply <n> --dry-run` before anything changes. See the [local advisor](/advisor) for the commands and [session optimization](/session-optimization) for how the pieces work together.
-
-Claude Code supplies the richest live signals. Codex and Cursor get continuity prompts and Cully commands, but advice depends on the data each client exposes.
-
-## Solo, self-hosted and team
-
-| Mode | What it gives you | Start with |
-| --- | --- | --- |
-| Try it on your laptop | The full stack in Docker with one stable owner and no sign-in. A good way to get a feel for the loop above. | [Quickstart](/quickstart), [self-hosting](/hosting) |
-| Team server | One Cully server for many people, each signed in through the company's identity provider. Everyone's agents write to the same server, and each person's records stay private to them. | [Team deployment](/team-deployment), [OAuth](/oauth) |
-
-A team server is what lets one person move between laptops and agents without losing their trail, and gives ops one place to run and secure the service.
-
-## Learning across a team: direction, not a feature yet
-
-The goal is for what one person's agent learns to help others. For example, a debugging approach that worked during a production issue could surface as a suggestion for someone in ops or product. Cully does not do this today:
-
-- Records are owner-scoped. The `company` section is a label for one person's notes. Coworkers cannot read each other's records, and the advisor does not send suggestions between people.
-- Cully does not schedule agents, assign work or trigger sessions. An agent acts when a person starts a session.
-
-Sharing what a team learns needs an explicit contract for who can see a note, how it is attributed, and how its author edits or withdraws it. The [shared learning design](/shared-learning) describes how it would work, and the [roadmap](/roadmap) lists it as planned work. Until it ships, a team can still share a lesson the usual way: the person copies a note's text into the project's instructions or a skill that everyone's agents load.
-
-## Next steps
-
-- Try the loop on your laptop with the [quickstart](/quickstart).
-- Read [memory](/memory) for what a record contains and how to find it.
-- Ops teams can follow [team deployment](/team-deployment) to give each person their own signed-in records.
+Use [quickstart](/quickstart) for a private installation, or [team deployment](/team-deployment) for shared hosting with separate user identities. Review [team workspace design](/team-workspace) for project coordination and [shared learning design](/shared-learning) for publication and playbooks. The [roadmap](/roadmap) separates current work from proposed stages.

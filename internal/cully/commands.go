@@ -89,15 +89,17 @@ func writeIntegrations(w io.Writer, cwd string) {
 	printIntegrationLine(w, "SessionStart/continuity", hookConfigured(settings, "SessionStart", "continuity claude start"))
 	printIntegrationLine(w, "Stop/continuity", hookConfigured(settings, "Stop", "continuity claude stop"))
 	printIntegrationLine(w, "SessionEnd/cleanup", hookConfigured(settings, "SessionEnd", "cleanup"))
+	printIntegrationLine(w, "Terminal signals", hookConfigured(settings, "PostToolUse", "pane-signal claude"))
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "  agent surfaces:")
-	printIntegrationLine(w, "Codex statusline", codexStatusLineInstalled())
 	printIntegrationLine(w, "Codex /prompts:cully", fileExists(codexPromptPath()))
 	codexHooks, _ := loadHookConfig(codexHooksPath())
-	printIntegrationLine(w, "Codex continuity", hookConfigured(codexHooks, "SessionStart", "continuity codex start") && hookConfigured(codexHooks, "Stop", "continuity codex stop"))
+	printIntegrationLine(w, "Codex continuity", hookConfigured(codexHooks, "SessionStart", "continuity codex start"))
+	printIntegrationLine(w, "Codex terminal signals", hookConfigured(codexHooks, "PostToolUse", "codex-signal"))
 	printIntegrationLine(w, "Cursor /cully", fileExists(cursorCommandPath(cwd)))
 	cursorHooks, _ := loadHookConfig(cursorHooksPath())
 	printIntegrationLine(w, "Cursor continuity", cursorHookConfigured(cursorHooks, "sessionStart", "continuity cursor start") && cursorHookConfigured(cursorHooks, "afterAgentResponse", "continuity cursor response") && cursorHookConfigured(cursorHooks, "stop", "continuity cursor stop"))
+	printIntegrationLine(w, "Cursor terminal signals", cursorHookConfigured(cursorHooks, "afterShellExecution", cursorSignalSub) && cursorHookConfigured(cursorHooks, "afterFileEdit", cursorSignalSub) && cursorHookConfigured(cursorHooks, "afterMCPExecution", cursorSignalSub))
 	fmt.Fprintln(w)
 	graph := hasGraphifyGraph(cwd)
 	graphMark := "✗"
@@ -155,6 +157,20 @@ func RunStatus(w io.Writer, cwd string) {
 	}
 	snap := readSnapshot(resolveSession(cwd))
 	st, hasState := readState()
+	var events []journalEvent
+	if _, evs, ok := latestJournal(cwd); ok {
+		events = evs
+	}
+	_, gitFiles := gitChangedFiles(cwd, 0)
+	healthSession, _, _ := latestJournal(cwd)
+	ensureTaskSuggestion(healthSession.Session, cwd, events)
+	fmt.Fprintln(w, renderSessionHealth(events, healthInputs{
+		Branch:      gitBranch(cwd),
+		Task:        readTask(healthSession.Session),
+		GitFiles:    gitFiles,
+		ContextUsed: sessionContextUsed(healthSession.Session),
+		Now:         time.Now(),
+	}))
 	writeIntegrations(w, cwd)
 	RunDaemonStatus(w)
 	fmt.Fprintln(w)

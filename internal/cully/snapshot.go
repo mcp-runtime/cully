@@ -21,6 +21,10 @@ type cullySnapshot struct {
 	CtxSize            int64   `json:"ctx_size,omitempty"`
 	CtxTokens          int64   `json:"ctx_tokens,omitempty"`
 	CostUSD            float64 `json:"cost_usd,omitempty"`
+	Model              string  `json:"model,omitempty"`
+	TokensOut          int64   `json:"tokens_out,omitempty"`
+	LinesAdded         int64   `json:"lines_added,omitempty"`
+	LinesRemoved       int64   `json:"lines_removed,omitempty"`
 	Rate5hPct          int     `json:"rate_5h_pct"`
 	Rate7dPct          int     `json:"rate_7d_pct"`
 	Searches           int     `json:"searches"`
@@ -32,6 +36,11 @@ type cullySnapshot struct {
 	PlanDeviation      string  `json:"plan_deviation"`
 	PendingSuggestions int     `json:"pending_suggestions"`
 	AdvisorOK          bool    `json:"advisor_ok"`
+	AdvisorAgent       string  `json:"advisor_agent,omitempty"`
+	AdvisorAt          string  `json:"advisor_at,omitempty"`
+	AdvisorMemory      string  `json:"advisor_memory,omitempty"`
+	AdvisorResearch    string  `json:"advisor_research,omitempty"`
+	AdvisorFailure     string  `json:"advisor_failure,omitempty"`
 }
 
 func writeSnapshot(session string, s cullySnapshot) {
@@ -67,12 +76,20 @@ func readSnapshot(session string) cullySnapshot {
 func buildSnapshot(s Signals, prReview, session, cwd string) cullySnapshot {
 	phase := detectPhase(s, prReview)
 	anchor, deviation := inferPlan(s.RecentPrompts)
+	previous := readSnapshot(session)
 	return cullySnapshot{
 		Session:            session,
 		Cwd:                cwd,
 		Phase:              string(phase),
 		CostIndex:          costIndex(),
 		ContextUsedPct:     s.ContextUsedPct,
+		CtxSize:            previous.CtxSize,
+		CtxTokens:          previous.CtxTokens,
+		CostUSD:            previous.CostUSD,
+		Model:              previous.Model,
+		TokensOut:          previous.TokensOut,
+		LinesAdded:         previous.LinesAdded,
+		LinesRemoved:       previous.LinesRemoved,
 		Rate5hPct:          s.Rate5hPct,
 		Rate7dPct:          s.Rate7dPct,
 		Searches:           s.Searches,
@@ -83,7 +100,12 @@ func buildSnapshot(s Signals, prReview, session, cwd string) cullySnapshot {
 		PlanAnchor:         anchor,
 		PlanDeviation:      deviation,
 		PendingSuggestions: len(readSuggestions(session)),
-		AdvisorOK:          true,
+		AdvisorOK:          previous.AdvisorOK,
+		AdvisorAgent:       previous.AdvisorAgent,
+		AdvisorAt:          previous.AdvisorAt,
+		AdvisorMemory:      previous.AdvisorMemory,
+		AdvisorResearch:    previous.AdvisorResearch,
+		AdvisorFailure:     previous.AdvisorFailure,
 	}
 }
 

@@ -1,102 +1,68 @@
 ---
 title: Shared learning design
-description: Design for letting a team's coding agents learn from each other's sessions, planned and not yet available.
+description: Proposed private drafting, explicit team sharing and maintained project playbooks.
 ---
 
 # Shared learning design
 
-::: warning Planned, not available yet
-Cully's records are private to their owner today. This page describes the design for team shared learning so the work can be reviewed before it is built. See [run projects with agents](/team-workflows) for what works now.
+::: warning Proposed, not shipped
+Current records are owner-scoped. Shared visibility, team retrieval, playbooks and a learning worker are not available yet. This is one part of the [team workspace design](/team-workspace), not a separate replacement for task management.
 :::
 
 ## Goal
 
-In team mode, what one person's coding agent learns should help the rest of the team. A teammate's agent finds something that works, Cully keeps it, and a different teammate's agent gets it at the start of a relevant session. The learning can be about anything: a debugging approach, a release step, a product decision, an ops check, a review habit or a way of prompting. A coding agent plus skills is the whole tool; Cully adds no workflow engine.
+Turn a useful lesson from one task into guidance for the next authorized teammate, with its evidence, author and limits intact. For example, a developer shares why an OAuth resource mismatch broke sign-in; another agent sees that lesson when preparing an authentication task.
 
-## A new component beside the advisor
+Memory stores authored records. The advisor interprets session signals. The proposed learning system prepares relevant lesson candidates and playbook suggestions. It does not treat similarity or repeated advice as proof that an approach works.
 
-Shared learning is a new part of Cully, the learning system. It sits next to the local advisor and the memory service and does a different job. Both the advisor and the learning system work for a single user or a team.
+## Draft privately, publish explicitly
 
-| Component | Job | Single user | Team |
-| --- | --- | --- | --- |
-| Local advisor | Reads session signals and suggests improvements to instructions, skills and MCP setup. Works offline. | Tunes your own sessions. | Can also offer suggestions that came from teammates' learnings. |
-| Memory | Stores and finds notes through MCP. | Your private notes. | Your notes, plus notes teammates chose to share. |
-| Learning system (new) | Collects lessons, groups repeated strategies, and works out which ones help the next session. | Learns from your own sessions across projects and agents, and tips stay private to you. | Learns from lessons people choose to share and delivers them to teammates. |
+1. The foreground agent can draft a lesson from a completed task: what worked, when it applies, evidence and limitations.
+2. The draft belongs to the author and is private. A background job may propose a draft or sharing suggestion; it cannot publish it.
+3. The author reviews the exact content and selects an authorized project or team. The server checks publication permission before committing visibility.
+4. Another member's task preparation retrieves a bounded set of currently authorized lessons, with author, revision and source links.
+5. A project maintainer can promote a reviewed lesson into a versioned playbook. Adoption into a skill or instruction file is explicit and previewable.
 
-Scope is a mode, not a separate product. On a laptop with the default private stack, the learning loop runs for one owner and never leaves that owner's records. On a team server, the same loop also reads records marked `team` for the member's team. The code path is the same; the difference is which records the owner may read.
+A user's opt-in to background analysis is separate from permission to share a note or change project guidance. Existing recognition of secret patterns remains useful but does not guarantee a note is safe to publish.
 
-The learning system builds on memory for storage and Mem0 for similarity, and it reuses the advisor's suggestion flow for delivery.
+## Records and playbooks
 
-## It runs as a daemon loop
-
-Like the advisor, the learning system is a long-running loop, not a command a person runs. It has two cooperating loops.
-
-**Local learning loop, in the Cully daemon.** The advisor daemon already starts with `cully agent setup`, keeps a PID file and works through queued jobs (`acquisitionLoop`, `advisorLoop`). The learning loop is a third loop in that same process, so setup, `cully status` and shutdown cover it too. It follows the same pattern:
-
-- Session and stop hooks queue small learning jobs: finish a session, queue "distill and share"; start a session, queue "fetch team tips for this project".
-- The loop takes one job at a time and runs the agent headless with the Cully learning skill, as the advisor worker does for its tool-gap scout. The agent makes the MCP calls with its own identity, so the daemon still holds no OAuth token and the advisor boundary is unchanged.
-- Results land in the local suggestion store: team tips appear in `cully suggestions` and work offline once fetched.
-- `CULLY_LEARN_DISABLE=1` turns it off, like `CULLY_ANALYZE_DISABLE`, and failures are logged and retried without blocking the session.
-
-**Team learning worker, in the data service.** This loop runs beside the Mem0 projection worker. It groups similar shared learnings, ranks strategies that several people converge on, and keeps their sources. It retries after an outage with backoff and never reads another team's records.
-
-The advisor keeps its current boundary: it holds no OAuth token and works without a server. Team tips reach it through the agent as described above.
-
-## Principles
-
-1. **Private by default.** A note becomes visible to the team only when it is marked `team`. The author can edit or withdraw it at any time.
-2. **Generic, not tied to one kind of work.** Incidents are one example. The model does not contain incident-specific fields.
-3. **One authorization path.** Team reads and writes go through the shared validation in `internal/memory`, used by both the MCP and data API transports.
-4. **No transcripts.** Cully stores distilled notes only, and keeps rejecting recognized secret patterns.
-5. **Agent-side distillation first.** The connected agent writes the lesson, so the server needs no model or key.
-
-## The record
-
-A shared learning is a small record built on the existing `learning` entry type:
-
-| Field | Meaning |
+| Record | Required information |
 | --- | --- |
-| Lesson | What to do or avoid. |
-| Applies when | Free text describing the situation the lesson fits. Matching uses this field. |
-| Evidence | What happened that taught it. |
-| Author, project, tags | Attribution and context. An optional free-form `kind` tag, such as `debugging`, `release` or `review`, helps people browse; matching does not depend on it. |
-| Visibility | `private` (default) or `team`. |
+| Learning | Stable ID, author, lesson, applies-when text, limitations, visibility, boundary ID, revision, source task/artifact links and publication state. |
+| Playbook | Maintainer, applicability, steps, supporting learning IDs/revisions, status and version. |
+| Suggestion | Recipient/project scope, source revisions, reason offered, freshness, acceptance/dismissal feedback and expiry. |
 
-## Data model changes
+Private, project and team visibility are enforced server-side. Publishing into one project does not publish to every project in the team. Source links must be authorized too; a shared summary must not reveal the existence or title of an inaccessible private task.
 
-- New `teams` and `memberships` tables. Membership comes from an admin-managed table in the first version; mapping an identity-provider group claim can follow.
-- `cully_entries` gains `team_id` and `visibility`, with an index for team reads.
-- The author's `owner_subject` stays on every record. Withdrawing a record removes its Mem0 projection through the existing projection job.
+Keep PostgreSQL authoritative. Mem0 supplies candidates which are hydrated from live authorized records before use. Grouped strategies retain source IDs/revisions; withdrawn sources invalidate affected derived suggestions rather than leaving a detached copy circulating as current advice.
 
-## Delivery in slices
+## Background processing without new credential exposure
 
-**0. Learning loop.** Add the local learning loop to the daemon, with its job queue and the `CULLY_LEARN_DISABLE` switch. It works for a single user with no team server, learning from that person's own notes, so it can ship and be tested first.
+MVP drafting and durable writes stay with the foreground agent through its configured MCP identity. Start with explicit retrieval in task preparation and session hooks; do not require another headless model call on every session start or stop.
 
-**1. Share a learning.** `cully_log` accepts `visibility: team`. The Cully skill tells the agent to share a reusable lesson, with when it applies, and to keep ordinary work notes private.
+An optional local learning queue may later reuse agent adapters for read-only preparation. It must be opt-in, coalesce duplicate jobs and define job IDs, deadlines, concurrency, bounded retries and cancellation. It must honor agent capability restrictions and never publish notes or write shared instructions. The daemon does not collect OAuth tokens or raw transcripts; adapters use the host client's configured authorized connection.
 
-**2. Find shared learnings.** `cully_context`, `cully_recall`, `cully_search` and `cully_recent` accept `scope: team`. A team read checks membership in one shared function. At session start, `cully_context` returns up to three short team tips for the project and task. Each shows its author, date and record ID, and `cully_get` opens the full note.
+A server worker can group already-published records within their authorized boundary. It cannot inspect private member notes to compare teammates. Personalized comparison happens under the requesting user's authorization and returns suggestions to that user. It does not disclose private usage patterns to coworkers.
 
-**3. Learn the strategy.** At the end of a session the agent writes a short strategy note: what it tried first, what worked and what it would change. The server groups similar notes by Mem0 similarity. When several people converge on an approach, it ranks that tip higher and keeps its sources.
+## Withdrawal and stale advice
 
-**4. Suggest it to a teammate.** The learning system compares a member's own notes with the team's strategies, using that member's own MCP identity. When a teammate uses one that this member does not, it returns a tip. A learning-loop job saves the tip locally, and the advisor lists it in `cully suggestions`. Applying it goes through `cully apply --dry-run` and writes to a shared instruction or skill. Accept and dismiss feedback is stored and used for ranking. Each tip links to its source notes and the matching [optimization guide](/session-optimization).
+An author can edit, unshare or delete a lesson. A maintainer can archive an adopted playbook; removing a source marks dependent guidance for review. Use a transaction to update source state and queue projection/derived-record invalidation. Retrieval enforces current visibility immediately, even if asynchronous cleanup is pending.
 
-Role skills such as dev, ops and product, incident grouping and webhook-started agent runs are optional layers that can follow once this loop works.
+Managed suggestions carry source revision and a short expiry. Revalidate membership and source validity before opening full records or applying a tip. Expired or unverifiable team tips may not be applied offline; immediate local advisor warnings remain available. Membership removal denies subsequent server reads and invalidates managed caches at their next synchronization/expiry. Cully cannot erase information already read or manually exported, and must say so.
 
-## Safety and quality
+## Trust and relevance
 
-| Risk | Plan |
-| --- | --- |
-| A private note leaks | Visibility defaults to `private`, and nothing is auto-shared. Tests cover non-members, withdrawn notes and private notes in team results. |
-| An unsafe note is shared | Existing secret rejection stays. The skill adds a short "safe to share" rule. |
-| Tips become noise | Three tips per session at most, ranked by relevance and acceptance feedback. |
-| Trust in a tip | Every tip shows its author and source, and the author can withdraw it. |
+- Shared lessons are reference data, not executable commands or privileged instructions. Tool restrictions and project policy do not come from a retrieved note.
+- Present author, source revision, evidence and limitations. Show whether evidence was reported by an agent or independently verified.
+- Return at most three short tips by default, matched to project/task context and current access. A member can dismiss or mute them.
+- Deduplicate similar notes without overwriting authorship. Rank using relevance and explicit usefulness feedback; repeated publication alone is not quality evidence.
+- Give maintainers a review queue for outdated or disputed playbooks. Learning authors cannot silently overwrite project-wide guidance.
 
-## Measuring it
+## Delivery and verification
 
-Track the share of sessions that retrieve a team tip, tip acceptance rate, repeat work on the same problem and time to resolve. Change ranking only from those results.
+Ship after the team/project authorization foundation. First implement private drafts and explicit publish/unshare, then authorized lookup, then maintained playbooks. Add ranking and background grouping only when retrieval and invalidation are reliable.
 
-## Open decisions
+Required cases include non-member direct reads, cross-team/project IDs on publication, private sources in derived tips, stale Mem0 candidates, withdrawal before application, role removal, deleted evidence and queued jobs executing after access changes. Prove that publishing or adopting requires the configured permission, and that retrying a job does not duplicate publication.
 
-- Team identity: admin-managed table first, or a group claim from the start.
-- Visibility default: private unless shared (recommended), or team-visible for `learning` notes.
-- Distillation: agent-side only (recommended), or add an optional server-side summarizer later.
+Measure lesson usefulness, handoff preparation time and repeated investigation with explicit cohort counts. Acceptance feedback improves suggestions; it does not become an individual employee score.

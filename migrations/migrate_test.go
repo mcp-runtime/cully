@@ -61,8 +61,11 @@ func TestApplyUpgradesSourceOnlySchema(t *testing.T) {
 	if err = pool.QueryRow(ctx, "SELECT summary,session_ref FROM cully_entries WHERE id=$1::uuid", id).Scan(&summary, &ref); err != nil || summary != "old note" || ref != nil {
 		t.Fatalf("old record lost: summary=%q ref=%v err=%v", summary, ref, err)
 	}
-	var version3 bool
-	if err = pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM cully_schema_versions WHERE version=3)").Scan(&version3); err != nil || !version3 {
-		t.Fatalf("version 3 missing: %v", err)
+	var version5, validated bool
+	if err = pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM cully_schema_versions WHERE version=5)").Scan(&version5); err != nil || !version5 {
+		t.Fatalf("version 5 missing: %v", err)
+	}
+	if err = pool.QueryRow(ctx, "SELECT convalidated FROM pg_constraint WHERE conrelid='cully_entries'::regclass AND conname='cully_entries_entry_type_check'").Scan(&validated); err != nil || !validated {
+		t.Fatalf("task entry constraint not validated: %v", err)
 	}
 }

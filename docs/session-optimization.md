@@ -24,9 +24,9 @@ flowchart LR
 
 1. **Start with a small lookup.** The installed session hook asks the agent to call `cully_context` for the current project and task. It returns three notes by default, at most five. Each summary is limited to 180 characters and each detail field to 120 characters. A preview includes the record ID, date, agent and an opaque session reference when one was saved; call `cully_get` for one full record when it matters.
 2. **Work in the agent's own context.** The agent uses the notes alongside the files and tools it needs for this task. A focused text query reads PostgreSQL; `mode: semantic` uses Mem0 when the wording has changed. Search again when the task or project changes, rather than repeatedly loading the same history.
-3. **Leave a useful handoff.** After substantive work, the skill and turn-end hook ask the agent to save a concise `cully_log` record: task, approach, result, checks, blocker or missed step, and next step. The hook supplies an opaque `session_ref` derived from the client's session ID when available, so notes from one session can be grouped without saving the native ID. The agent uses its own MCP connection and owner identity. PostgreSQL stores the source note; Mem0 indexes it for later recall.
+3. **Leave a useful handoff.** After substantive work, the skill asks the agent to save a concise `cully_log` record: task, approach, result, checks, blocker or missed step, and next step. Claude Code and Cursor can also prompt at turn end; Codex uses the skill without a blocking stop hook. Hooks supply an opaque `session_ref` derived from the client's session ID when available, so notes from one session can be grouped without saving the native ID. The agent uses its own MCP connection and owner identity. PostgreSQL stores the source note; Mem0 indexes it for later recall.
 
-The hook does not send a transcript to Cully. The agent decides which facts are worth saving, and the stop hook skips short, routine replies. A successful MCP call is required before Cully can claim that a shared note was saved.
+Hooks do not send transcripts to Cully. The agent decides which facts are worth saving, and the Claude Code stop hook skips short, routine replies. A successful MCP call is required before Cully can claim that a shared note was saved.
 
 ## What Cully optimizes
 
@@ -55,6 +55,8 @@ For a coding task, a useful loop is:
 
 Cully suggests checks; it does not run or certify them automatically. The saved note should distinguish a passing check from a check that was skipped or could not run. That gives the next agent a useful starting point without implying the work was verified when it was not.
 
+Durable handoffs and reusable optimization lessons go through the agent's authenticated Cully MCP connection into PostgreSQL, with Mem0 indexing/recall. Transient local counters and snapshots remain the inputs for offline live warnings. Remote memory supplies prior lessons; it does not replace current session signals or give the daemon the agent's OAuth credentials.
+
 ## Use the agent's native controls
 
 Cully uses the extension surfaces each agent actually provides:
@@ -62,12 +64,12 @@ Cully uses the extension surfaces each agent actually provides:
 | Agent | Cully integration | Useful native control |
 | --- | --- | --- |
 | Claude Code | `SessionStart` and `Stop` hooks, a live status line, and local advisor analysis of session signals. | `/context` shows where space went; `/compact` reduces an overgrown active conversation. Focused subagents can keep broad research out of the main context. [Claude Code features](https://code.claude.com/docs/en/features-overview), [hooks](https://code.claude.com/docs/en/hooks). |
-| Codex | `SessionStart` and `Stop` hooks, a short managed `AGENTS.md` section, the Cully skill, and a native status line that includes context remaining. | Codex can compact a conversation; its `SessionStart` hook also runs after compaction, so the continuity instruction returns. Review newly installed hooks in `/hooks`. [Codex hooks](https://learn.chatgpt.com/docs/hooks), [prompting guide](https://developers.openai.com/cookbook/examples/gpt-5/codex_prompting_guide). |
+| Codex | A `SessionStart` hook, a short managed `AGENTS.md` section, the Cully skill and one optional Cully display: the expandable `cully run codex` status panel, combining native footer instruments with bounded `PostToolUse` counters and advice. Cully does not install a blocking `Stop` hook. | Codex can compact a conversation; its `SessionStart` hook also runs after compaction, so the continuity instruction returns. Review newly installed hooks in `/hooks`. [Codex hooks](https://learn.chatgpt.com/docs/hooks), [prompting guide](https://developers.openai.com/cookbook/examples/gpt-5/codex_prompting_guide). |
 | Cursor | `sessionStart`, `afterAgentResponse` and `stop` hooks, the Cully skill, and a project command. | Cursor's context ring shows how much space is used; Cursor summarizes older conversation when it fills. Its `preCompact` hook observes compaction but cannot change it. [Cursor context](https://prod.cursor.com/docs/agent/prompting), [hooks](https://cursor.com/docs/hooks). |
 
 Cursor cloud agents do not run the user-level `sessionStart` hook that Cully installs on a laptop. They can still use Cully MCP tools when connected; the automatic start instruction from that desktop hook is unavailable there. [Cursor cloud hook support](https://cursor.com/docs/hooks).
 
-Cully does not force compaction. In Claude Code, the advisor uses the real status-line context data when available and recommends `/context` and `/compact` only at high context pressure. In Codex and Cursor, the native clients own their context displays and summarization; Cully's hooks provide continuity rather than replacing those controls.
+Cully does not force compaction. In Claude Code, the advisor uses the real status-line context data when available and recommends `/context` and `/compact` only at high context pressure. In Codex, the optional panel reads native context pressure and recommends `/compact` at 25% context remaining or less, with a stronger warning at 10% or less. The native client owns compaction; Cully does not force it. Direct shell tool events support search/check classification, and formatting alone does not count as verification. When tool signals or native context are unavailable, advice states that limitation. Cursor's native client owns its context display and summarization; Cully's hooks provide continuity rather than replacing those controls.
 
 ## Check it on your machine
 

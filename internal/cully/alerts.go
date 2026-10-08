@@ -230,6 +230,9 @@ func isApplyable(c classifiedSuggestion) bool {
 			return false
 		}
 	}
+	if strings.Contains(lower, strings.ToLower(taskSuggestionPrefix)) {
+		return true
+	}
 	if c.Level == AlertAdv {
 		return true
 	}
@@ -267,18 +270,18 @@ func ruleBasedSuggestions(sig string) []classifiedSuggestion {
 	case ctx >= 90:
 		out = append(out, classifiedSuggestion{
 			Level: AlertWarn,
-			Text:  "⚠️ Context critical — run /context then /compact before the next large read",
+			Text:  "⚠️ Context critical — save a concise handoff and compact before the next large read",
 		})
 	case ctx >= 75:
 		out = append(out, classifiedSuggestion{
 			Level: AlertCaut,
-			Text:  "📦 Context high — consider /compact or delegating broad reads to Explore",
+			Text:  "📦 Context high — compact or narrow broad reads before continuing",
 		})
 	}
 	if rate5 >= 85 {
 		out = append(out, classifiedSuggestion{
 			Level: AlertWarn,
-			Text:  "⛽ Rate limit hot — switch /model down or use Haiku subagents",
+			Text:  "⛽ Rate limit hot — reduce repeated work or choose a cheaper available model",
 		})
 	}
 	if searches >= 10 && !graph {
@@ -296,7 +299,7 @@ func ruleBasedSuggestions(sig string) []classifiedSuggestion {
 	if len(out) == 0 {
 		out = append(out, classifiedSuggestion{
 			Level: AlertMemo,
-			Text:  "✅ Instruments nominal — reversionary advisor (haiku unavailable)",
+			Text:  "ℹ️ Model advisor unavailable — only supplied local signals were checked",
 		})
 	}
 	return out
@@ -350,7 +353,7 @@ func writeReportLines(session, cwd string, texts []string) error {
 
 const (
 	maxSeenTexts   = 60 // per-session history cap
-	maxReportLines = 4  // stored suggestion rows (mirrors the bar's safety cap)
+	maxReportLines = 12 // bounded standing fixes; native statusline still shows four
 )
 
 // seenStore remembers every suggestion the advisor has surfaced this session —
@@ -431,7 +434,7 @@ func mergeSuggestions(session, cwd string, incoming []classifiedSuggestion) []cl
 	}
 
 	var out []classifiedSuggestion
-	for _, ln := range readSuggestions(session) {
+	for _, ln := range readSuggestionsLimit(session, maxReportLines) {
 		c := classifySuggestion(ln, snap, st)
 		if !isApplyable(c) || staleInstrumentClaim(c.Text, snap) {
 			continue

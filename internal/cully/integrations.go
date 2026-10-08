@@ -15,8 +15,6 @@ const (
 	cursorCommandMarkerEnd   = "<!-- cully:cursor-command:end -->"
 )
 
-const codexStatusLineItems = `["model-with-reasoning", "current-dir", "git-branch", "context-remaining", "five-hour-limit", "weekly-limit", "fast-mode"]`
-
 const codexCullyPrompt = `---
 description: Run Cully controls
 argument-hint: "[status | suggestions | apply <n>]"
@@ -93,46 +91,8 @@ func removeOwnedFile(path, marker string) error {
 	return os.Remove(path)
 }
 
-// upsertCodexStatusLine adds Codex's native status-line fields without
-// replacing a user's existing [tui].status_line selection. The managed markers
-// let later installs refresh this release's defaults and let uninstall remove
-// only what Cully added.
-func upsertCodexStatusLine(path string) error {
-	existing, err := os.ReadFile(path)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	text := string(existing)
-	block := codexStatusLineBlock()
-
-	if replaced, ok := replaceMarkedBlock(text, codexStatusMarkerStart, codexStatusMarkerEnd, "status_line = "+codexStatusLineItems); ok {
-		return os.WriteFile(path, []byte(replaced), 0o644)
-	}
-
-	if start, end, ok := tomlTableBounds(text, "tui"); ok {
-		if tomlTableHasKey(text, start, end, "status_line") {
-			return nil
-		}
-		prefix := text[:start]
-		if !strings.HasSuffix(prefix, "\n") {
-			prefix += "\n"
-		}
-		text = prefix + block + "\n" + text[start:]
-	} else {
-		trimmed := strings.TrimRight(text, "\n")
-		if trimmed == "" {
-			text = "[tui]\n" + block + "\n"
-		} else {
-			text = trimmed + "\n\n[tui]\n" + block + "\n"
-		}
-	}
-
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(path, []byte(text), 0o644)
-}
-
+// removeCodexStatusLine cleans up the native footer that older Cully releases
+// managed. It leaves user-owned status_line settings untouched.
 func removeCodexStatusLine(path string) error {
 	existing, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
@@ -141,37 +101,17 @@ func removeCodexStatusLine(path string) error {
 	if err != nil {
 		return err
 	}
-	text, ok := replaceMarkedBlock(string(existing), codexStatusMarkerStart, codexStatusMarkerEnd, "")
+	text, ok := removeMarkedBlock(string(existing), codexStatusMarkerStart, codexStatusMarkerEnd)
 	if !ok {
 		return nil
 	}
-	text = strings.TrimSpace(text)
-	if text == "" || text == "[tui]" {
+	if trimmed := strings.TrimSpace(text); trimmed == "" || trimmed == "[tui]" {
 		return os.Remove(path)
 	}
-	return os.WriteFile(path, []byte(text+"\n"), 0o644)
+	return os.WriteFile(path, []byte(text), 0o644)
 }
 
-func codexStatusLineBlock() string {
-	return codexStatusMarkerStart + "\nstatus_line = " + codexStatusLineItems + "\n" + codexStatusMarkerEnd
-}
-
-func codexStatusLineInstalled() bool {
-	b, err := os.ReadFile(codexConfigPath())
-	if err != nil {
-		return false
-	}
-	text := string(b)
-	if strings.Contains(text, codexStatusMarkerStart) {
-		return true
-	}
-	if start, end, ok := tomlTableBounds(text, "tui"); ok {
-		return tomlTableHasKey(text, start, end, "status_line")
-	}
-	return false
-}
-
-func replaceMarkedBlock(text, startMarker, endMarker, body string) (string, bool) {
+func removeMarkedBlock(text, startMarker, endMarker string) (string, bool) {
 	start := strings.Index(text, startMarker)
 	if start < 0 {
 		return text, false
@@ -182,13 +122,7 @@ func replaceMarkedBlock(text, startMarker, endMarker, body string) (string, bool
 	}
 	end := start + len(startMarker) + relEnd
 	endAfter := end + len(endMarker)
-	if body == "" {
-		return text[:start] + text[endAfter:], true
-	}
-	block := startMarker
-	block += "\n" + body
-	block += "\n" + endMarker
-	return text[:start] + block + text[endAfter:], true
+	return text[:start] + text[endAfter:], true
 }
 
 func tomlTableBounds(text, target string) (start, end int, ok bool) {
@@ -211,17 +145,4 @@ func tomlTableBounds(text, target string) (start, end int, ok bool) {
 		return start, len(text), true
 	}
 	return 0, 0, false
-}
-
-func tomlTableHasKey(text string, start, end int, key string) bool {
-	for _, line := range strings.Split(text[start:end], "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if strings.HasPrefix(line, key+"=") || strings.HasPrefix(line, key+" =") {
-			return true
-		}
-	}
-	return false
 }

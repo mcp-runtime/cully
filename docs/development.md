@@ -29,7 +29,7 @@ Separate workflows provide independent checks and badge targets:
 | Trivy | MCP, data, website and docs container vulnerability reports |
 | CodeQL | Go, Python and JavaScript/TypeScript analysis |
 
-These run on pushes and pull requests. The website and docs retain separate build/deploy workflows for their own paths. The hosted VM services are verified during release deployment after the deployment gate is enabled.
+These run on pushes and pull requests. The website and docs retain separate build/deploy workflows for their own paths. Release tags publish CLI, MCP and data archives plus matching service images. Personal VM deployment is triggered manually with a published tag through the `Personal Cully deployment` workflow; it checks the published images before updating services.
 
 Build server images with `docker build -t cully-mcp .` and `docker build -f Dockerfile.data-api -t cully-data .`. GoReleaser builds independent CLI, MCP and data archives from a Cully release tag.
 

@@ -1,34 +1,55 @@
 ---
 title: Cully documentation
-description: Understand Cully's advisor and memory, then choose the right guide.
+description: Cully is the intelligent workspace around your coding agents. Learn how it observes sessions, remembers what matters and helps you steer Claude Code, Codex, Cursor and other agents.
 ---
 
 # Cully docs
 
-Cully helps you resume work across Claude Code, Codex and Cursor and see useful guidance during a session.
+**Your coding agents need a copilot too.**
 
-## How the parts fit together
+Cully is an intelligent workspace around the coding agents you already use. It observes your coding sessions, remembers what matters, detects problems and helps you steer Claude Code, Codex, Cursor and other agents across sessions.
 
-| Part | What it does |
-| --- | --- |
-| Local advisor and agent integrations | Starts with the installer, shows available session signals, and offers workflow suggestions you can preview before applying. It can keep guiding you if the memory server is temporarily unavailable. |
-| Cully memory | Cully MCP, the private data API, PostgreSQL and self-hosted Mem0 let your connected agent save and retrieve owned notes across sessions and agents. |
+```text
+Observe  →  Understand  →  Remember  →  Advise  →  Improve
+```
 
-For yourself, the default stack runs on your laptop with one stable owner and no sign-in. For a company team, an ops team can run the services on its platform and add [OAuth](/oauth) so each person has private records. See [self-hosting](/hosting) and [team deployment](/team-deployment) for the two paths.
+Works across agents. Learns across sessions.
 
-## Guides
+## Start here
 
 | What you want to do | Guide |
 | --- | --- |
-| Install Cully and continue work across sessions | [Quickstart](/quickstart) |
-| Save and find notes | [Memory](/memory) |
-| Use session guidance | [Local advisor](/advisor) |
-| Ship with a clear session trail and keep context focused | [Session optimization](/session-optimization) |
-| See how a team runs project work through agent sessions | [Run projects with agents](/team-workflows) |
-| Run the services on your laptop | [Self-hosting](/hosting) |
-| Connect to an existing server | [Connect an agent](/agents) |
-| Let multiple people sign in | [OAuth setup](/oauth) |
+| Install Cully and run your first agent | [Quickstart](/quickstart) |
+| See how the parts fit together | [How Cully works](/how-cully-works) |
+| Run any agent with a live health bar and advisor | [The Cully terminal](/terminal) |
+| Replay a session, hand it off or get unstuck | [Session intelligence](/session-intelligence) |
+| Put sessions on the record: forensics, review, playbooks | [Use cases](/use-cases) |
+| Know what is built and what is planned | [Current capabilities](/capabilities) |
 
-Manual service settings and system details are in the [configuration reference](/configuration) and [architecture](/architecture).
+## Core concepts
+
+| Concept | In one line |
+| --- | --- |
+| [Terminal](/terminal) | One wrapper for every agent, with a health bar and an advisor panel |
+| [Session intelligence](/session-intelligence) | A private journal of what the agent did, turned into loops, health, replay and handoff |
+| [Advisor](/advisor) | A second pair of eyes that warns and suggests while you work |
+| [Project memory](/memory) | Decisions and results that outlive the session |
+| [Agent integration](/agents) | How Claude Code, Codex, Cursor and others connect |
+
+## Run Cully
+
+For yourself, the default stack runs on your laptop with one stable owner and no sign-in. For a company team, an ops team can run the services on its platform and add [OAuth](/oauth) so each person has private records. See [self-hosting](/hosting) and [team deployment](/team-deployment).
+
+## Trust and direction
+
+| Topic | Guide |
+| --- | --- |
+| What Cully records and what it never does | [Privacy](/privacy) |
+| Where Cully is going | [Product direction](/product-direction) |
+| Manual service settings and system details | [Configuration](/configuration) and [architecture](/architecture) |
 
 For project work, see [development](/development), the [roadmap](/roadmap) and the [changelog](https://github.com/mcp-runtime/cully/blob/main/CHANGELOG.md).
+
+## Teams and project work
+
+Today, a [team deployment](/team-deployment) provides separate, authenticated user memory. Read [work across people and agents](/team-workflows) for the current workflow and the proposed next step. The [team workspace design](/team-workspace) describes shared tasks, portable handoffs, review evidence and playbooks; these are planned capabilities, not shipped features.

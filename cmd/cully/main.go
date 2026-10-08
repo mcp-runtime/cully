@@ -13,20 +13,34 @@ import (
 
 var version = "dev"
 
-const help = `Cully — your companion for better work and everyday life.
+const help = `Cully — your coding agents need a copilot too.
 
 Usage:
-  cully agent setup [claude|codex|cursor|all] [--mcp-url URL] [--oauth]
-  cully setup [--agent claude|codex|cursor] [--oauth] [--prepare]
+  cully setup [--agent claude|codex|cursor|all] [--oauth] [--prepare]
+                                         Start the full local stack, integrations and advisor
+  cully setup [--agent AGENT] --mcp-url URL [--oauth]
+                                         Use an existing server; set up integrations and advisor
   cully uninstall [--purge-data]           Stop local stack and remove managed agent setup
   cully uninstall [claude|codex|cursor|all] Remove one or all agent integrations
   cully status [directory]                Show session and agent status
+  cully rescue [--cwd DIR] [--agent claude|codex|cursor] [--no-ai]
+                                          Diagnose a stuck session from recorded evidence
   cully suggestions                       Review suggested improvements
+  cully task [NAME]                       Show or set the session task (--clear removes it)
+  cully run AGENT [ARGS...]               Run any coding agent in the Cully terminal
+  cully claude|codex|cursor [ARGS...]     Shortcuts for cully run claude, codex and cursor-agent
+  cully timeline [--all] [--session ID] [--cwd DIR]
+                                         Show what happened in a coding session
+  cully replay [--session ID] [--cwd DIR] [--files] [--speed N|--instant] [--json] [--html [FILE]]
+                                         Replay what the agent did: steps, files, commands, checks
+  cully handoff [AGENT] [--print] [--cwd DIR]
+                                         Hand the session to another coding agent
   cully apply <n> [--dry-run] [--yes] [--cwd DIR]
   cully mcp add --url URL [--agent claude|codex|cursor] [--oauth]
   cully version
 
-Shared personal and project memory is available through Cully's MCP tools.
+Cully watches your coding sessions, remembers what matters and helps you steer
+Claude Code, Codex, Cursor and other coding agents.
 Docs: https://docs.cully.net
 `
 
@@ -47,11 +61,6 @@ func run(args []string) error {
 		fmt.Print(help)
 	case "setup":
 		return runSetup(args[1:])
-	case "agent":
-		if len(args) < 2 || args[1] != "setup" {
-			return fmt.Errorf("usage: cully agent setup [claude|codex|cursor|all] [--mcp-url URL] [--oauth]")
-		}
-		return runAgentSetup(args[2:])
 	case "uninstall":
 		return runUninstall(args[1:])
 	case "status":
@@ -66,8 +75,25 @@ func run(args []string) error {
 			cwd = args[1]
 		}
 		cully.RunStatus(os.Stdout, cwd)
+	case "rescue":
+		return cully.RunRescue(os.Stdout, args[1:])
+	case "task":
+		return cully.RunTask(os.Stdout, args[1:])
 	case "suggestions":
 		cully.RunList(os.Stdout)
+	case "run":
+		if len(args) < 2 {
+			return fmt.Errorf("usage: cully run AGENT [ARGS...]")
+		}
+		return cully.RunPane(args[1], args[2:], os.Stdin, os.Stdout)
+	case "claude", "codex", "cursor":
+		return cully.RunPane(args[0], args[1:], os.Stdin, os.Stdout)
+	case "timeline":
+		return cully.RunTimeline(os.Stdout, args[1:])
+	case "replay":
+		return cully.RunReplay(os.Stdout, args[1:])
+	case "handoff":
+		return cully.RunHandoff(args[1:], os.Stdin, os.Stdout)
 	case "apply":
 		n, yes, dryRun, cwd, err := parseApply(args[1:])
 		if err != nil {
@@ -103,86 +129,77 @@ func run(args []string) error {
 }
 
 func runSetup(args []string) error {
-	target, oauth, prepare, err := parseSetup(args)
+	options, err := parseSetup(args)
 	if err != nil {
 		return err
 	}
-	return runSelfHost(target, oauth, prepare)
+	if options.endpoint != "" {
+		fmt.Println("Setting up Cully with an existing MCP server")
+		var targets []string
+		if options.target != "" {
+			targets = append(targets, options.target)
+		}
+		if err := cully.InstallWithMCP(options.endpoint, options.oauth, targets...); err != nil {
+			return err
+		}
+		fmt.Println("Setup complete. Restart your coding agent to load the Cully skill, hooks and MCP tools.")
+		return nil
+	}
+	return runSelfHost(options.target, options.oauth, options.prepare)
 }
 
-func parseSetup(args []string) (target string, oauth, prepare bool, err error) {
+type setupOptions struct {
+	target, endpoint string
+	oauth, prepare   bool
+}
+
+func parseSetup(args []string) (setupOptions, error) {
+	var options setupOptions
 	legacyTarget := ""
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		legacyTarget, args = args[0], args[1:]
 	}
 	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
-	selected := fs.String("agent", "", "coding agent to connect: claude, codex, or cursor")
-	fs.BoolVar(&oauth, "oauth", false, "server uses OAuth; print sign-in instructions")
-	fs.BoolVar(&prepare, "prepare", false, "download the self-hosted stack and create editable configuration without starting services")
-	if err = fs.Parse(args); err != nil {
-		return "", false, false, err
+	selected := fs.String("agent", "", "coding agent to connect: claude, codex, cursor, or all; default: detect installed agents")
+	fs.StringVar(&options.endpoint, "mcp-url", "", "connect to an existing MCP server instead of starting local memory services")
+	fs.BoolVar(&options.oauth, "oauth", false, "server uses OAuth; print sign-in instructions")
+	fs.BoolVar(&options.prepare, "prepare", false, "download the self-hosted stack and create editable configuration without starting services")
+	if err := fs.Parse(args); err != nil {
+		return setupOptions{}, err
 	}
-	usage := fmt.Errorf("usage: cully setup [--agent claude|codex|cursor] [--oauth] [--prepare]")
+	usage := fmt.Errorf("usage: cully setup [--agent claude|codex|cursor|all] [--mcp-url URL] [--oauth] [--prepare]")
 	if len(fs.Args()) > 1 || (legacyTarget != "" && len(fs.Args()) != 0) {
-		return "", false, false, usage
+		return setupOptions{}, usage
 	}
 	if legacyTarget != "" {
-		target = legacyTarget
+		options.target = legacyTarget
 	}
 	if len(fs.Args()) == 1 {
-		target = fs.Args()[0]
+		options.target = fs.Args()[0]
 	}
 	agentFlagSet := false
+	endpointFlagSet := false
 	fs.Visit(func(option *flag.Flag) {
 		if option.Name == "agent" {
 			agentFlagSet = true
 		}
+		if option.Name == "mcp-url" {
+			endpointFlagSet = true
+		}
 	})
 	if agentFlagSet {
-		if *selected == "" || target != "" {
-			return "", false, false, usage
+		if *selected == "" || options.target != "" {
+			return setupOptions{}, usage
 		}
-		target = *selected
+		options.target = *selected
 	}
-	if target == "all" {
-		return "", false, false, fmt.Errorf("server setup accepts one agent at a time")
+	if endpointFlagSet && (options.endpoint == "" || options.prepare) {
+		return setupOptions{}, fmt.Errorf("--mcp-url requires a URL and cannot be combined with --prepare")
 	}
-	if target != "" && target != "claude" && target != "codex" && target != "cursor" {
-		return "", false, false, fmt.Errorf("choose --agent claude, codex, or cursor")
+	if options.target != "" && options.target != "claude" && options.target != "codex" && options.target != "cursor" && options.target != "all" {
+		return setupOptions{}, fmt.Errorf("choose --agent claude, codex, cursor, or all")
 	}
-	return target, oauth, prepare, nil
-}
-
-func runAgentSetup(args []string) error {
-	target := ""
-	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
-		target, args = args[0], args[1:]
-	}
-	fs := flag.NewFlagSet("agent setup", flag.ContinueOnError)
-	endpoint := fs.String("mcp-url", "", "register this MCP URL while installing the agent integration")
-	oauth := fs.Bool("oauth", false, "server uses OAuth; print sign-in instructions")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if len(fs.Args()) > 1 || (target != "" && len(fs.Args()) != 0) {
-		return fmt.Errorf("usage: cully agent setup [claude|codex|cursor|all] [--mcp-url URL] [--oauth]")
-	}
-	if target == "" && len(fs.Args()) == 1 {
-		target = fs.Args()[0]
-	}
-	if *oauth && *endpoint == "" {
-		return fmt.Errorf("--oauth requires --mcp-url for agent setup")
-	}
-	if *endpoint != "" {
-		if target != "" {
-			return cully.InstallWithMCP(*endpoint, *oauth, target)
-		}
-		return cully.InstallWithMCP(*endpoint, *oauth)
-	}
-	if target != "" {
-		return cully.Install(target)
-	}
-	return cully.Install()
+	return options, nil
 }
 
 func parseApply(args []string) (n int, yes, dryRun bool, cwd string, err error) {
@@ -223,8 +240,17 @@ func runInternal(args []string) error {
 			return fmt.Errorf("internal continuity requires agent and event")
 		}
 		cully.RunContinuityHook(args[1], args[2], os.Stdin, os.Stdout)
+	case "codex-signal":
+		cully.RunSignalHook(os.Stdin)
+	case "pane-signal":
+		if len(args) != 2 {
+			return fmt.Errorf("internal pane-signal requires an agent")
+		}
+		cully.RunPaneSignalHook(args[1], os.Stdin)
 	case "daemon":
 		cully.RunDaemon()
+	case "stop-daemon":
+		return cully.StopDaemon()
 	case "worker":
 		if len(args) != 4 {
 			return fmt.Errorf("internal worker requires signals, session and directory")
@@ -232,6 +258,8 @@ func runInternal(args []string) error {
 		cully.RunWorker(args[1], args[2], args[3])
 	case "self-hosted-credentials":
 		return runSelfHostCredentials(args[1:])
+	case "self-hosted-ports":
+		return runSelfHostPorts(args[1:])
 	default:
 		return fmt.Errorf("unknown internal action %q", args[0])
 	}

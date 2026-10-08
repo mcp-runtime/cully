@@ -19,7 +19,7 @@ func TestApplyFlagsAfterNumber(t *testing.T) {
 }
 
 func TestRemovedCommands(t *testing.T) {
-	for _, name := range []string{"memory", "list", "systems", "plan", "checklist", "debrief", "daemon", "worker", "statusline", "analyze", "cleanup"} {
+	for _, name := range []string{"agent", "memory", "list", "systems", "plan", "checklist", "debrief", "daemon", "worker", "statusline", "analyze", "cleanup"} {
 		if err := run([]string{name}); err == nil {
 			t.Fatalf("old public command %s still exists", name)
 		}
@@ -44,27 +44,32 @@ func TestSetupMCPOptionsFailBeforeChangingAgentSetup(t *testing.T) {
 
 func TestSetupAgentFlagAndLegacyName(t *testing.T) {
 	for _, test := range []struct {
-		args    []string
-		target  string
-		oauth   bool
-		prepare bool
+		args     []string
+		target   string
+		oauth    bool
+		prepare  bool
+		endpoint string
 	}{
+		{},
 		{args: []string{"--agent", "codex"}, target: "codex"},
+		{args: []string{"--agent", "all"}, target: "all"},
+		{args: []string{"--agent", "codex", "--mcp-url", "https://mcp.example.com/mcp", "--oauth"}, target: "codex", endpoint: "https://mcp.example.com/mcp", oauth: true},
 		{args: []string{"--agent=claude", "--oauth"}, target: "claude", oauth: true},
 		{args: []string{"--agent", "cursor", "--prepare"}, target: "cursor", prepare: true},
 		{args: []string{"codex", "--oauth"}, target: "codex", oauth: true},
 		{args: []string{"--prepare"}, prepare: true},
 	} {
-		target, oauth, prepare, err := parseSetup(test.args)
-		if err != nil || target != test.target || oauth != test.oauth || prepare != test.prepare {
-			t.Fatalf("parseSetup(%v) = %q, %v, %v, %v", test.args, target, oauth, prepare, err)
+		options, err := parseSetup(test.args)
+		if err != nil || options.target != test.target || options.oauth != test.oauth || options.prepare != test.prepare || options.endpoint != test.endpoint {
+			t.Fatalf("parseSetup(%v) = %+v, %v", test.args, options, err)
 		}
 	}
 	for _, args := range [][]string{
-		{"--agent"}, {"--agent", ""}, {"--agent", "all"}, {"--agent", "other"},
+		{"--agent"}, {"--agent", ""}, {"--agent", "other"},
 		{"codex", "--agent", "claude"}, {"--agent", "codex", "cursor"},
+		{"--mcp-url", ""}, {"--mcp-url"}, {"--mcp-url", "https://mcp.example.com/mcp", "--prepare"},
 	} {
-		if _, _, _, err := parseSetup(args); err == nil {
+		if _, err := parseSetup(args); err == nil {
 			t.Fatalf("accepted invalid setup args: %v", args)
 		}
 	}

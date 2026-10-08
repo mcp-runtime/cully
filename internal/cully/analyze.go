@@ -663,7 +663,7 @@ func sessionKey(sid string) string {
 
 // spawnWorker hands advisor work to the persistent daemon or a one-shot worker.
 func spawnWorker(signals, session, cwd string) {
-	dispatchAdvisor(signals, session, cwd)
+	dispatchAdvisor("agent=claude\n"+signals, session, cwd)
 }
 
 // RunCleanup removes a session's transient artifacts. Invoked by the SessionEnd

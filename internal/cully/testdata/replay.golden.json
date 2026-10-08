@@ -1,0 +1,355 @@
+{
+  "schema_version": 2,
+  "session": "sess-1",
+  "agent": "Claude Code",
+  "meta": {
+    "session": "sess-1",
+    "agent": "Claude Code",
+    "project": "demo",
+    "branch": "main",
+    "start": "2026-10-08T10:31:00Z",
+    "end": "2026-10-08T10:50:00Z"
+  },
+  "events": [
+    {
+      "time": "2026-10-08T10:31:00Z",
+      "class": "B"
+    },
+    {
+      "time": "2026-10-08T10:31:05Z",
+      "class": "O",
+      "op": "read",
+      "path": "internal/auth/resource.go"
+    },
+    {
+      "time": "2026-10-08T10:31:10Z",
+      "class": "S"
+    },
+    {
+      "time": "2026-10-08T10:34:00Z",
+      "class": "E",
+      "op": "edit",
+      "path": "internal/auth/resource.go"
+    },
+    {
+      "time": "2026-10-08T10:34:05Z",
+      "class": "E",
+      "op": "edit",
+      "path": "internal/auth/resource.go"
+    },
+    {
+      "time": "2026-10-08T10:35:00Z",
+      "class": "E",
+      "op": "create",
+      "path": "internal/auth/resource_test.go"
+    },
+    {
+      "time": "2026-10-08T10:42:00Z",
+      "class": "T",
+      "cmd": "go test",
+      "failed": true
+    },
+    {
+      "time": "2026-10-08T10:43:00Z",
+      "class": "E",
+      "op": "edit",
+      "path": "internal/auth/resource.go"
+    },
+    {
+      "time": "2026-10-08T10:44:00Z",
+      "class": "T",
+      "cmd": "go test",
+      "failed": true
+    },
+    {
+      "time": "2026-10-08T10:45:00Z",
+      "class": "E",
+      "op": "edit",
+      "path": "internal/auth/resource.go"
+    },
+    {
+      "time": "2026-10-08T10:46:00Z",
+      "class": "T",
+      "cmd": "go test",
+      "failed": true
+    },
+    {
+      "time": "2026-10-08T10:46:01Z",
+      "class": "N",
+      "note": "loop"
+    },
+    {
+      "time": "2026-10-08T10:47:00Z",
+      "class": "F",
+      "op": "delete",
+      "path": "old/helper.go"
+    },
+    {
+      "time": "2026-10-08T10:48:00Z",
+      "class": "T",
+      "cmd": "go test"
+    },
+    {
+      "time": "2026-10-08T10:49:00Z",
+      "class": "M",
+      "tool": "cully_log"
+    },
+    {
+      "time": "2026-10-08T10:50:00Z",
+      "class": "X"
+    }
+  ],
+  "steps": [
+    {
+      "t": "2026-10-08T10:31:00Z",
+      "kind": "session",
+      "verb": "",
+      "detail": "Claude Code started",
+      "footer": {
+        "files": 0,
+        "checks_passed": 0,
+        "checks_failed": 0,
+        "loops": 0
+      }
+    },
+    {
+      "t": "2026-10-08T10:31:05Z",
+      "kind": "file",
+      "verb": "Read",
+      "detail": "internal/auth/resource.go",
+      "op": "read",
+      "path": "internal/auth/resource.go",
+      "footer": {
+        "files": 0,
+        "checks_passed": 0,
+        "checks_failed": 0,
+        "loops": 0
+      }
+    },
+    {
+      "t": "2026-10-08T10:34:00Z",
+      "kind": "file",
+      "verb": "Edited",
+      "detail": "internal/auth/resource.go",
+      "op": "edit",
+      "path": "internal/auth/resource.go",
+      "footer": {
+        "files": 1,
+        "checks_passed": 0,
+        "checks_failed": 0,
+        "loops": 0
+      }
+    },
+    {
+      "t": "2026-10-08T10:34:05Z",
+      "kind": "file",
+      "verb": "Edited",
+      "detail": "internal/auth/resource.go",
+      "op": "edit",
+      "path": "internal/auth/resource.go",
+      "footer": {
+        "files": 1,
+        "checks_passed": 0,
+        "checks_failed": 0,
+        "loops": 0
+      }
+    },
+    {
+      "t": "2026-10-08T10:35:00Z",
+      "kind": "file",
+      "verb": "Created",
+      "detail": "internal/auth/resource_test.go",
+      "op": "create",
+      "path": "internal/auth/resource_test.go",
+      "footer": {
+        "files": 2,
+        "checks_passed": 0,
+        "checks_failed": 0,
+        "loops": 0
+      }
+    },
+    {
+      "t": "2026-10-08T10:42:00Z",
+      "kind": "check",
+      "verb": "Ran",
+      "detail": "go test",
+      "outcome": "failed",
+      "cmd": "go test",
+      "failed": true,
+      "footer": {
+        "files": 2,
+        "checks_passed": 0,
+        "checks_failed": 1,
+        "loops": 0
+      }
+    },
+    {
+      "t": "2026-10-08T10:43:00Z",
+      "kind": "file",
+      "verb": "Edited",
+      "detail": "internal/auth/resource.go",
+      "op": "edit",
+      "path": "internal/auth/resource.go",
+      "footer": {
+        "files": 2,
+        "checks_passed": 0,
+        "checks_failed": 1,
+        "loops": 0
+      }
+    },
+    {
+      "t": "2026-10-08T10:44:00Z",
+      "kind": "check",
+      "verb": "Ran",
+      "detail": "go test",
+      "outcome": "failed",
+      "cmd": "go test",
+      "failed": true,
+      "footer": {
+        "files": 2,
+        "checks_passed": 0,
+        "checks_failed": 2,
+        "loops": 0
+      }
+    },
+    {
+      "t": "2026-10-08T10:45:00Z",
+      "kind": "file",
+      "verb": "Edited",
+      "detail": "internal/auth/resource.go",
+      "op": "edit",
+      "path": "internal/auth/resource.go",
+      "footer": {
+        "files": 2,
+        "checks_passed": 0,
+        "checks_failed": 2,
+        "loops": 0
+      }
+    },
+    {
+      "t": "2026-10-08T10:46:00Z",
+      "kind": "check",
+      "verb": "Ran",
+      "detail": "go test",
+      "outcome": "failed",
+      "cmd": "go test",
+      "failed": true,
+      "footer": {
+        "files": 2,
+        "checks_passed": 0,
+        "checks_failed": 3,
+        "loops": 0
+      }
+    },
+    {
+      "t": "2026-10-08T10:46:01Z",
+      "kind": "loop",
+      "verb": "",
+      "detail": "Cully noticed a loop: the same command failed 3 times",
+      "footer": {
+        "files": 2,
+        "checks_passed": 0,
+        "checks_failed": 3,
+        "loops": 1
+      }
+    },
+    {
+      "t": "2026-10-08T10:47:00Z",
+      "kind": "file",
+      "verb": "Deleted",
+      "detail": "old/helper.go",
+      "op": "delete",
+      "path": "old/helper.go",
+      "footer": {
+        "files": 3,
+        "checks_passed": 0,
+        "checks_failed": 3,
+        "loops": 1
+      }
+    },
+    {
+      "t": "2026-10-08T10:48:00Z",
+      "kind": "check",
+      "verb": "Ran",
+      "detail": "go test",
+      "outcome": "passed",
+      "cmd": "go test",
+      "footer": {
+        "files": 3,
+        "checks_passed": 1,
+        "checks_failed": 3,
+        "loops": 1
+      }
+    },
+    {
+      "t": "2026-10-08T10:49:00Z",
+      "kind": "memory",
+      "verb": "Memory",
+      "detail": "cully_log",
+      "footer": {
+        "files": 3,
+        "checks_passed": 1,
+        "checks_failed": 3,
+        "loops": 1
+      }
+    },
+    {
+      "t": "2026-10-08T10:50:00Z",
+      "kind": "session",
+      "verb": "",
+      "detail": "Claude Code ended",
+      "footer": {
+        "files": 3,
+        "checks_passed": 1,
+        "checks_failed": 3,
+        "loops": 1
+      }
+    }
+  ],
+  "summary": {
+    "duration_seconds": 1140,
+    "edits": 5,
+    "checks_passed": 1,
+    "checks_failed": 3,
+    "loops": 1,
+    "files": {
+      "created": [
+        {
+          "path": "internal/auth/resource_test.go",
+          "count": 1
+        }
+      ],
+      "edited": [
+        {
+          "path": "internal/auth/resource.go",
+          "count": 4
+        }
+      ],
+      "deleted": [
+        {
+          "path": "old/helper.go",
+          "count": 1
+        }
+      ],
+      "moved": [],
+      "read_only": [],
+      "hotspots": [
+        {
+          "path": "internal/auth/resource.go",
+          "count": 4
+        }
+      ],
+      "recorded": true
+    }
+  },
+  "reconcile": {
+    "available": true,
+    "comparable": true,
+    "changed_outside_recorded_calls": [
+      "stray.txt"
+    ],
+    "deleted_but_present": [
+      "old/helper.go"
+    ]
+  }
+}

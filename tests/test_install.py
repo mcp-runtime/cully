@@ -23,9 +23,8 @@ class InstallerTest(unittest.TestCase):
         self.cli.write_text('''#!/bin/sh
 case "$1" in
   version) echo v-test ;;
-  help) echo 'cully agent setup' ;;
-  daemon) printf '%s\\n' "$*" > "$TEST_ROOT/daemon-call" ;;
-  agent) printf '%s\\n' "$*" > "$TEST_ROOT/setup"; printf '%s\\n' "$PATH" > "$TEST_ROOT/setup-path" ;;
+  _internal) printf '%s\\n' "$*" > "$TEST_ROOT/daemon-call" ;;
+  setup) printf '%s\\n' "$*" > "$TEST_ROOT/setup"; printf '%s\\n' "$PATH" > "$TEST_ROOT/setup-path" ;;
 esac
 ''')
         self.cli.chmod(0o755)
@@ -75,7 +74,7 @@ cp "$TEST_ROOT/cully" "$GOBIN/cully"
                                     "https://example.com/mcp", "--oauth")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.root / "setup").read_text().strip(),
-                         "agent setup codex --mcp-url https://example.com/mcp --oauth")
+                         "setup --mcp-url https://example.com/mcp --agent codex --oauth")
         self.assertFalse((self.root / "go-call").exists())
         calls = (self.root / "curl-calls").read_text()
         self.assertIn("--progress-bar --connect-timeout 10 --max-time 120", calls)
@@ -125,9 +124,11 @@ cp "$TEST_ROOT/cully" "$GOBIN/cully"
                 installed = self.root / directory / "bin" / "cully"
                 self.assertTrue(installed.is_file())
                 self.assertEqual((self.root / "daemon-call").read_text().strip(),
-                                 "daemon stop")
-                self.assertEqual((self.root / "setup-path").read_text().split(os.pathsep)[0],
-                                 str(installed.parent))
+                                 "_internal stop-daemon")
+                self.assertFalse((self.root / "setup").exists())
+                self.assertIn("Start Docker, then run: cully setup", result.stdout)
+                if agent:
+                    self.assertIn(f"cully setup --agent {agent}", result.stdout)
                 path_line = f'export PATH="$HOME/{directory}/bin:$PATH"'
                 self.assertEqual((self.root / ".zshrc").read_text().count(path_line), 1)
 
@@ -153,7 +154,7 @@ cp "$TEST_ROOT/cully" "$GOBIN/cully"
         old_cli.write_text("#!/bin/sh\necho old\n")
         old_cli.chmod(0o755)
         self.env["PATH"] = os.pathsep.join((str(old_bin), str(selected_bin), self.env["PATH"]))
-        result = self.run_installer("--agent", "codex")
+        result = self.run_installer("--agent", "codex", "--mcp-url", "https://example.com/mcp")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.root / "setup-path").read_text().split(os.pathsep)[0],
                          str(selected_bin))

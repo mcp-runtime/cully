@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -297,5 +298,132 @@ func TestDurableMem0Projection(t *testing.T) {
 	}
 	if len(stored) != 0 {
 		t.Fatal("Mem0 deletion not propagated")
+	}
+}
+
+func TestDatabaseSessionsAndTasks(t *testing.T) {
+	s := testStore(t)
+	project := "https://github.com/mcp-runtime/cully"
+	branch := "feat/oauth-validation"
+	task := "Oauth validation"
+	ref := "claude-0123456789abcdef"
+	start := func(owner string, task *string) memory.Result {
+		in := memory.SessionInput{SessionRef: ref, Assistant: "claude", Section: "company", ProjectURL: &project, Branch: &branch, Task: task}
+		return execute(t, s, owner, memory.Request{Operation: "session", Session: &in})
+	}
+	first := start("owner-a", &task)
+	if first.Session == nil || first.Session.Task == nil || *first.Session.Task != task || first.Entry == nil || first.Entry.EntryType != "task" {
+		t.Fatalf("task not created and linked: %+v", first)
+	}
+	if first.Session.TaskID == nil || *first.Session.TaskID != first.Entry.ID {
+		t.Fatal("session not linked to its task entry")
+	}
+	again := start("owner-a", &task)
+	if again.Entry != nil || again.Session.TaskID == nil || *again.Session.TaskID != *first.Session.TaskID {
+		t.Fatal("same task name must not create a second entry")
+	}
+	personalTask := "Private work"
+	wrongSection := memory.SessionInput{SessionRef: ref, Assistant: "claude", Section: "personal", Task: &personalTask}
+	if _, err := (memory.Service{Store: s}).Execute(context.Background(), "owner-a", memory.Request{Operation: "session", Session: &wrongSection}); !errors.Is(err, memory.ErrInvalid) {
+		t.Fatalf("section change must be rejected as invalid: %v", err)
+	}
+	if got := start("owner-a", nil); got.Session.TaskID == nil || *got.Session.TaskID != *first.Session.TaskID {
+		t.Fatal("rejected section change altered the session task")
+	}
+	kind := "task"
+	tasks := execute(t, s, "owner-a", memory.Request{Operation: "recent", Recent: &memory.RecentInput{EntryType: &kind, Limit: 10}})
+	if len(tasks.Entries) != 1 {
+		t.Fatalf("task entries = %d", len(tasks.Entries))
+	}
+	renamed := "Token audience checks"
+	if second := start("owner-a", &renamed); second.Entry == nil || *second.Session.Task != renamed {
+		t.Fatal("a new task name must replace the link")
+	}
+	metaOnly := start("owner-a", nil)
+	if metaOnly.Session.Task == nil || *metaOnly.Session.Task != renamed {
+		t.Fatal("updating without a task must keep the existing one")
+	}
+	get := func(owner string) *memory.Session {
+		return execute(t, s, owner, memory.Request{Operation: "session_get", SessionGet: &memory.SessionRefInput{SessionRef: ref}}).Session
+	}
+	if got := get("owner-a"); got == nil || got.Branch == nil || *got.Branch != branch {
+		t.Fatalf("session_get = %+v", got)
+	}
+	if get("owner-b") != nil {
+		t.Fatal("cross-owner session read")
+	}
+	id := memory.IDInput{EntryID: *metaOnly.Session.TaskID}
+	execute(t, s, "owner-a", memory.Request{Operation: "delete", ID: &id})
+	if got := get("owner-a"); got == nil || got.TaskID != nil || got.Task != nil {
+		t.Fatalf("deleting the task entry must unlink it: %+v", got)
+	}
+}
+
+func TestDatabaseSessionTaskClearAndScope(t *testing.T) {
+	s := testStore(t)
+	project := "https://github.com/mcp-runtime/cully"
+	task := "Oauth validation"
+	ref := "claude-fedcba9876543210"
+	clear := true
+	personal := "personal"
+	session := func(owner string, task *string, clear *bool) memory.Result {
+		in := memory.SessionInput{SessionRef: ref, Assistant: "claude", Section: "company", ProjectURL: &project, Task: task, ClearTask: clear}
+		return execute(t, s, owner, memory.Request{Operation: "session", Session: &in})
+	}
+	linked := session("owner-a", &task, nil)
+	if linked.Session.TaskID == nil {
+		t.Fatal("task not linked")
+	}
+	taskID := *linked.Session.TaskID
+	// A linked task keeps its session's section.
+	update := memory.UpdateInput{EntryID: taskID, Section: &personal}
+	if _, err := (memory.Service{Store: s}).Execute(context.Background(), "owner-a", memory.Request{Operation: "update", Update: &update}); !errors.Is(err, memory.ErrInvalid) {
+		t.Fatalf("linked task section change must be rejected as invalid: %v", err)
+	}
+	// Explicit clear unlinks the session but keeps the task record.
+	cleared := session("owner-a", nil, &clear)
+	if cleared.Session.TaskID != nil || cleared.Session.Task != nil {
+		t.Fatalf("clear_task must unlink the task: %+v", cleared.Session)
+	}
+	kind := "task"
+	kept := execute(t, s, "owner-a", memory.Request{Operation: "recent", Recent: &memory.RecentInput{EntryType: &kind, Limit: 10}})
+	if len(kept.Entries) != 1 || kept.Entries[0].ID != taskID {
+		t.Fatalf("clear_task must keep the task record: %+v", kept.Entries)
+	}
+	// Omitted task after a clear stays cleared; setting links again.
+	if got := session("owner-a", nil, nil); got.Session.TaskID != nil {
+		t.Fatal("omitted task must not restore the cleared link")
+	}
+	again := "Token audience checks"
+	if relinked := session("owner-a", &again, nil); relinked.Session.TaskID == nil || *relinked.Session.Task != again {
+		t.Fatal("a new task name must link after a clear")
+	}
+	// Another owner cannot touch the task through update scoping.
+	other := memory.UpdateInput{EntryID: taskID, Summary: &again}
+	if got := execute(t, s, "owner-b", memory.Request{Operation: "update", Update: &other}); got.Entry != nil {
+		t.Fatal("cross-owner task update")
+	}
+}
+
+func TestDatabaseSessionTaskRepeatAfterClearRelinks(t *testing.T) {
+	s := testStore(t)
+	project := "https://github.com/mcp-runtime/cully"
+	task := "Oauth validation"
+	clear := true
+	session := func(task *string, clear *bool) memory.Result {
+		in := memory.SessionInput{SessionRef: "claude-0123456789abcdef", Assistant: "claude", Section: "company", ProjectURL: &project, Task: task, ClearTask: clear}
+		return execute(t, s, "owner-a", memory.Request{Operation: "session", Session: &in})
+	}
+	taskID := *session(&task, nil).Session.TaskID
+	session(nil, &clear)
+	// The same name after a clear relinks the kept record instead of duplicating it.
+	relinked := session(&task, nil)
+	if relinked.Session.TaskID == nil || *relinked.Session.TaskID != taskID {
+		t.Fatalf("repeat after clear must relink the existing task: %+v", relinked.Session)
+	}
+	kind := "task"
+	all := execute(t, s, "owner-a", memory.Request{Operation: "recent", Recent: &memory.RecentInput{EntryType: &kind, Limit: 10}})
+	if len(all.Entries) != 1 {
+		t.Fatalf("repeat after clear must not insert a duplicate: %+v", all.Entries)
 	}
 }

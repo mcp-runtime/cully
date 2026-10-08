@@ -59,11 +59,14 @@ func RunDaemonStatus(w io.Writer) {
 		return
 	}
 	fmt.Fprintln(w, "cully advisor daemon not running")
-	fmt.Fprintln(w, "  run cully agent setup to start the advisor")
+	fmt.Fprintln(w, "  rerun cully setup with your original options to start the advisor")
 }
 
 // StartDaemonDetached launches the long-running advisor daemon in the background.
 func StartDaemonDetached() error {
+	if os.Getenv("CULLY_ANALYZE_DISABLE") == "1" {
+		return fmt.Errorf("CULLY_ANALYZE_DISABLE=1 disables the advisor; unset it to start the daemon")
+	}
 	if isDaemonRunning() {
 		return nil
 	}
@@ -268,6 +271,15 @@ func enqueueAdvisorJob(signalsPath, session, cwd string) error {
 
 // dispatchAdvisor sends work to the daemon queue, or spawns a one-shot worker.
 func dispatchAdvisor(signals, session, cwd string) {
+	if os.Getenv("CULLY_ANALYZE_DISABLE") == "1" {
+		return
+	}
+	if !strings.Contains(signals, "terminal_program=") {
+		signals += "\n" + detectTerminalProfile().signals()
+	}
+	if project := advisorProjectURL(cwd); project != "" {
+		signals += "\nproject_url=" + project + "\n"
+	}
 	if err := os.MkdirAll(logDir(), 0o755); err != nil {
 		logf(session, "dispatchAdvisor: mkdir logs: %v", err)
 		return

@@ -1,6 +1,6 @@
 interface:
   display_name: "Cully"
-  short_description: "Your companion for better work and everyday life"
+  short_description: "Session awareness, project memory and workflow guidance for your coding agents"
   default_prompt: "Use $cully to inspect my current session, find useful context, and suggest workflow improvements. Save important decisions when helpful."
 
 policy:

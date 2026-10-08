@@ -3,7 +3,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 
 export default withMermaid(defineConfig({
   title: 'Cully',
-  description: 'Guides and reference for Cully, your companion for better work with AI agents.',
+  description: 'Guides and reference for Cully, the intelligent workspace around your coding agents.',
   lang: 'en-US',
   appearance: false,
   cleanUrls: true,
@@ -35,7 +35,8 @@ export default withMermaid(defineConfig({
     siteTitle: 'Cully Docs',
     nav: [
       { text: 'Start', link: '/quickstart' },
-      { text: 'Memory', link: '/memory' },
+      { text: 'How it works', link: '/how-cully-works' },
+      { text: 'Terminal', link: '/terminal' },
       { text: 'Advisor', link: '/advisor' },
       { text: 'Self-host', link: '/hosting' },
       { text: 'Website', link: 'https://cully.net' }
@@ -43,13 +44,22 @@ export default withMermaid(defineConfig({
     sidebar: [
       { text: 'Quickstart', link: '/quickstart' },
       {
+        text: 'Core concepts',
+        items: [
+          { text: 'How Cully works', link: '/how-cully-works' },
+          { text: 'The Cully terminal', link: '/terminal' },
+          { text: 'Session intelligence', link: '/session-intelligence' },
+          { text: 'Advisor', link: '/advisor' },
+          { text: 'Project memory', link: '/memory' },
+          { text: 'Connect an agent', link: '/agents' }
+        ]
+      },
+      {
         text: 'Use Cully',
         items: [
-          { text: 'Memory', link: '/memory' },
-          { text: 'Local advisor', link: '/advisor' },
           { text: 'Keep sessions focused', link: '/session-optimization' },
-          { text: 'Connect an agent', link: '/agents' },
-          { text: 'Run projects with agents', link: '/team-workflows' }
+          { text: 'Privacy', link: '/privacy' },
+          { text: 'Work across people and agents', link: '/team-workflows' }
         ]
       },
       {
@@ -68,8 +78,11 @@ export default withMermaid(defineConfig({
           { text: 'Configuration', link: '/configuration' },
           { text: 'Mem0 recall', link: '/mem0' },
           { text: 'Architecture', link: '/architecture' },
-          { text: 'Shared learning design', link: '/shared-learning' },
           { text: 'Development', link: '/development' },
+          { text: 'Current capabilities', link: '/capabilities' },
+          { text: 'Product direction', link: '/product-direction' },
+          { text: 'Team workspace design', link: '/team-workspace' },
+          { text: 'Shared learning design', link: '/shared-learning' },
           { text: 'Roadmap', link: '/roadmap' },
           { text: 'Changelog ↗', link: 'https://github.com/mcp-runtime/cully/blob/main/CHANGELOG.md' }
         ]

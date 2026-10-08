@@ -1,0 +1,29 @@
+name: Changelog
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  changelog:
+    name: Changelog updated
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require a changelog update in every PR
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          result=0
+          git diff --quiet "$BASE_SHA...$HEAD_SHA" -- CHANGELOG.md || result=$?
+          case "$result" in
+            0) echo '::error::Every PR must update CHANGELOG.md under Unreleased.'; exit 1 ;;
+            1) echo 'CHANGELOG.md updated.' ;;
+            *) exit "$result" ;;
+          esac

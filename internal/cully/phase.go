@@ -9,6 +9,7 @@ import (
 type SessionPhase string
 
 const (
+	PhaseMessy     SessionPhase = "messy"
 	PhaseEmergency SessionPhase = "emergency"
 	PhasePreflight SessionPhase = "preflight"
 	PhaseApproach  SessionPhase = "approach"
@@ -17,6 +18,13 @@ const (
 )
 
 func detectPhase(s Signals, prReview string) SessionPhase {
+	tools := 0
+	for _, count := range s.ToolHistogram {
+		tools += count
+	}
+	if workflowMessy(tools, s.ToolErrors, 0) {
+		return PhaseMessy
+	}
 	if s.ContextUsedPct >= 90 || s.Rate5hPct >= 90 || s.Rate7dPct >= 90 {
 		return PhaseEmergency
 	}
@@ -37,6 +45,10 @@ func detectPhase(s Signals, prReview string) SessionPhase {
 	return PhaseCruise
 }
 
+func workflowMessy(tools, errors, pendingEdits int) bool {
+	return (errors >= 3 && tools > 0 && errors*4 >= tools) || (pendingEdits >= 8 && errors >= 2)
+}
+
 func (p SessionPhase) label() string {
 	return sessionPhaseDisplay(string(p))
 }
@@ -44,6 +56,8 @@ func (p SessionPhase) label() string {
 // sessionPhaseDisplay maps internal phase ids to short status-bar labels.
 func sessionPhaseDisplay(phase string) string {
 	switch strings.ToLower(strings.TrimSpace(phase)) {
+	case "messy":
+		return "Messy"
 	case "emergency", "emer":
 		return "hot"
 	case "preflight":

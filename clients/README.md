@@ -19,7 +19,7 @@ This starts PostgreSQL, Mem0, the data API and Cully MCP. OAuth is off by defaul
 To connect an agent to a server that is already running, use its MCP URL:
 
 ```sh
-cully agent setup codex --mcp-url https://mcp.example.com/mcp
+cully setup --agent codex --mcp-url https://mcp.example.com/mcp
 ```
 
 Add `--oauth` if the server requires sign-in. A team can connect Cully to its identity provider through [MCP Auth](../docs/team-deployment.md). The agent receives only the MCP URL; private database and service credentials stay with the operator.

@@ -32,8 +32,67 @@ func add[I any](server *sdk.Server, service memory.Service, identity func(contex
 		return nil, out, err
 	})
 }
+
+// toolRegistration is one MCP tool Cully serves. Handler registers exactly
+// this table, so contract tests enumerate the same list clients discover.
+type toolRegistration struct {
+	name        string
+	description string
+	write       bool
+	register    func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error))
+}
+
+func toolRegistrations() []toolRegistration {
+	return []toolRegistration{
+		{name: "cully_log", description: "Save a personal or company memory record.", write: true, register: func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error)) {
+			add(server, service, identity, t.name, t.description, t.write, func(v memory.LogInput) memory.Request { return memory.Request{Operation: "log", Log: &v} })
+		}},
+		{name: "cully_search", description: "Search authoritative source records using PostgreSQL full-text search.", register: func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error)) {
+			add(server, service, identity, t.name, t.description, t.write, func(v memory.SearchInput) memory.Request { return memory.Request{Operation: "search", Search: &v} })
+		}},
+		{name: "cully_recall", description: "Recall live source records through self-hosted Mem0 semantic memory. Requires configured Mem0 indexing.", register: func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error)) {
+			add(server, service, identity, t.name, t.description, t.write, func(v memory.SearchInput) memory.Request { return memory.Request{Operation: "recall", Search: &v} })
+		}},
+		{name: "cully_recent", description: "List recent memory records by section or project.", register: func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error)) {
+			add(server, service, identity, t.name, t.description, t.write, func(v memory.RecentInput) memory.Request { return memory.Request{Operation: "recent", Recent: &v} })
+		}},
+		{name: "cully_context", description: "Get up to five concise, owner-scoped prior-work previews for a project or task. Filter by project or opaque session_ref when known. Use text or semantic mode with a query, or recent mode without one; fetch full details with cully_get only when needed.", register: func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error)) {
+			sdk.AddTool(server, &sdk.Tool{Name: t.name, Description: t.description, Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true}}, func(ctx context.Context, _ *sdk.CallToolRequest, input ContextInput) (*sdk.CallToolResult, ContextResult, error) {
+				owner, err := identity(ctx, false)
+				if err != nil {
+					return nil, ContextResult{}, err
+				}
+				out, err := compactContext(ctx, service, owner, input)
+				return nil, out, err
+			})
+		}},
+		{name: "cully_session", description: "Start or update the current agent session with its project, branch and an optional task name. A new task name saves one task record linked to the session; the same name again keeps or relinks that record without adding a duplicate. Omit task to keep the current link; pass clear_task to unlink it while keeping the task record.", write: true, register: func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error)) {
+			add(server, service, identity, t.name, t.description, t.write, func(v memory.SessionInput) memory.Request { return memory.Request{Operation: "session", Session: &v} })
+		}},
+		{name: "cully_session_get", description: "Get one session by its opaque session_ref, including its task.", register: func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error)) {
+			add(server, service, identity, t.name, t.description, t.write, func(v memory.SessionRefInput) memory.Request {
+				return memory.Request{Operation: "session_get", SessionGet: &v}
+			})
+		}},
+		{name: "cully_get", description: "Get one owned memory record.", register: func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error)) {
+			add(server, service, identity, t.name, t.description, t.write, func(v memory.IDInput) memory.Request { return memory.Request{Operation: "get", ID: &v} })
+		}},
+		{name: "cully_update", description: "Update selected fields. Empty optional text clears a field. A task entry linked to a session keeps its session's section.", write: true, register: func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error)) {
+			add(server, service, identity, t.name, t.description, t.write, func(v memory.UpdateInput) memory.Request { return memory.Request{Operation: "update", Update: &v} })
+		}},
+		{name: "cully_delete", description: "Delete one owned record and queue deletion of its Mem0 projection.", write: true, register: func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error)) {
+			add(server, service, identity, t.name, t.description, t.write, func(v memory.IDInput) memory.Request { return memory.Request{Operation: "delete", ID: &v} })
+		}},
+		{name: "cully_projects", description: "List projects with recent memory activity.", register: func(t toolRegistration, server *sdk.Server, service memory.Service, identity func(context.Context, bool) (string, error)) {
+			add(server, service, identity, t.name, t.description, t.write, func(v memory.ProjectsInput) memory.Request {
+				return memory.Request{Operation: "projects", Projects: &v}
+			})
+		}},
+	}
+}
+
 func Handler(service memory.Service, cfg AuthConfig, path, version string) http.Handler {
-	server := sdk.NewServer(&sdk.Implementation{Name: "Cully", Version: version}, &sdk.ServerOptions{Instructions: "Your companion for better work and everyday life. At the start of substantive work, use cully_context with a relevant project and query to get a few concise prior-work previews. Use semantic mode when text search misses, and cully_get only for a record whose full details matter. Before finishing substantive work, use cully_log to save one concise task summary with approach, outcome, issues or missed steps, and next steps. Include the opaque session_ref supplied by an installed Cully hook when available. Avoid duplicate records, raw transcripts and credentials. Search before answering history questions. Remember personal context when the user asks. Local session controls use the cully CLI."})
+	server := sdk.NewServer(&sdk.Implementation{Name: "Cully", Version: version}, &sdk.ServerOptions{Instructions: "Intelligence around your coding agents. At the start of substantive work, use cully_context with a relevant project and query to get a few concise prior-work previews. Use semantic mode when text search misses, and cully_get only for a record whose full details matter. Before finishing substantive work, use cully_log to save one concise task summary with approach, outcome, issues or missed steps, and next steps. Include the opaque session_ref supplied by an installed Cully hook when available. When the user accepts a task, call cully_session with that session_ref and the task name. Avoid duplicate records, raw transcripts and credentials. Search before answering history questions. Remember personal context when the user asks. Local session controls use the cully CLI."})
 	identity := func(ctx context.Context, write bool) (string, error) {
 		if cfg.Mode == "none" {
 			return cfg.Owner, nil
@@ -51,24 +110,9 @@ func Handler(service memory.Service, cfg AuthConfig, path, version string) http.
 		}
 		return ti.UserID, nil
 	}
-	add(server, service, identity, "cully_log", "Save a personal or company memory record.", true, func(v memory.LogInput) memory.Request { return memory.Request{Operation: "log", Log: &v} })
-	add(server, service, identity, "cully_search", "Search authoritative source records using PostgreSQL full-text search.", false, func(v memory.SearchInput) memory.Request { return memory.Request{Operation: "search", Search: &v} })
-	add(server, service, identity, "cully_recall", "Recall live source records through self-hosted Mem0 semantic memory. Requires configured Mem0 indexing.", false, func(v memory.SearchInput) memory.Request { return memory.Request{Operation: "recall", Search: &v} })
-	add(server, service, identity, "cully_recent", "List recent memory records by section or project.", false, func(v memory.RecentInput) memory.Request { return memory.Request{Operation: "recent", Recent: &v} })
-	sdk.AddTool(server, &sdk.Tool{Name: "cully_context", Description: "Get up to five concise, owner-scoped prior-work previews for a project or task. Filter by project or opaque session_ref when known. Use text or semantic mode with a query, or recent mode without one; fetch full details with cully_get only when needed.", Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true}}, func(ctx context.Context, _ *sdk.CallToolRequest, input ContextInput) (*sdk.CallToolResult, ContextResult, error) {
-		owner, err := identity(ctx, false)
-		if err != nil {
-			return nil, ContextResult{}, err
-		}
-		out, err := compactContext(ctx, service, owner, input)
-		return nil, out, err
-	})
-	add(server, service, identity, "cully_get", "Get one owned memory record.", false, func(v memory.IDInput) memory.Request { return memory.Request{Operation: "get", ID: &v} })
-	add(server, service, identity, "cully_update", "Update selected fields. Empty optional text clears a field.", true, func(v memory.UpdateInput) memory.Request { return memory.Request{Operation: "update", Update: &v} })
-	add(server, service, identity, "cully_delete", "Delete one owned record and queue deletion of its Mem0 projection.", true, func(v memory.IDInput) memory.Request { return memory.Request{Operation: "delete", ID: &v} })
-	add(server, service, identity, "cully_projects", "List projects with recent memory activity.", false, func(v memory.ProjectsInput) memory.Request {
-		return memory.Request{Operation: "projects", Projects: &v}
-	})
+	for _, t := range toolRegistrations() {
+		t.register(t, server, service, identity)
+	}
 	mux := http.NewServeMux()
 	endpoint := sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return server }, &sdk.StreamableHTTPOptions{Stateless: true, JSONResponse: true, MaxRequestBodyBytes: 256 << 10})
 	if cfg.Mode == "oauth" {

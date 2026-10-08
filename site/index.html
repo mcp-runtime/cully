@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f5ef">
-  <meta name="description" content="Ship faster with confidence. Cully helps Claude Code, Codex, and Cursor recall what was done, how it was done, and which session did it, then suggests focused ways to check the work.">
+  <meta name="description" content="Cully is the intelligent workspace around Claude Code, Codex, Cursor and other coding agents. It watches your sessions, remembers what matters, detects loops and helps you steer, replay, audit and hand off the work.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Cully — better work with AI agents">
-  <meta property="og:description" content="Recall what happened in earlier coding sessions, focus on the current task, and keep a clear trail of checks and next steps with Cully.">
+  <meta property="og:title" content="Cully — your coding agents need a copilot too">
+  <meta property="og:description" content="Cully observes your coding sessions, remembers what matters and helps you steer Claude Code, Codex, Cursor and other agents across sessions.">
   <meta property="og:url" content="https://cully.net/">
   <link rel="canonical" href="https://cully.net/">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
   <script src="/main.js" defer></script>
-  <title>Cully — better work with AI agents</title>
+  <title>Cully — your coding agents need a copilot too</title>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -22,99 +22,113 @@
       <a class="brand" href="/" aria-label="Cully home"><span class="brand-mark" aria-hidden="true"><span></span></span><span>cully<span class="brand-dot">.</span></span></a>
       <button class="menu-toggle" type="button" aria-controls="site-nav" aria-expanded="false" aria-label="Open navigation"><span></span><span></span><span></span></button>
       <nav id="site-nav" class="site-nav" aria-label="Main navigation">
-        <a href="#paths">Use Cully</a>
-        <a href="#product">Product</a>
+        <a href="#loop">The loop</a>
+        <a href="#use-cases">Use cases</a>
+        <a href="#terminal">Terminal</a>
         <a href="#how-it-works">How it works</a>
         <a href="https://docs.cully.net/">Docs</a>
         <a href="https://github.com/mcp-runtime/cully" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
-        <a class="nav-cta" href="#install">Try it out <span aria-hidden="true">↓</span></a>
+        <a class="nav-cta" href="#install">Get started <span aria-hidden="true">↓</span></a>
       </nav>
     </header>
 
     <main id="main">
       <section class="hero section-wrap" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <div class="eyebrow"><span class="eyebrow-line"></span> The companion for your coding agents</div>
-          <h1 id="hero-title">Ship faster.<br><em>Stay confident.</em></h1>
-          <p class="hero-lead">Cully helps Claude Code, Codex, and Cursor recall what was done, how it was done, and which session did it. It brings a few relevant notes into the next task, spots workflow gaps, and leaves a clear handoff with the checks that passed and the work still open.</p>
+          <div class="eyebrow"><span class="eyebrow-line"></span> Intelligence around your coding agents</div>
+          <h1 id="hero-title">Your coding agents<br><em>need a copilot too.</em></h1>
+          <p class="hero-lead">Cully observes your coding workflow, remembers what matters and helps you steer Claude Code, Codex, Cursor and other coding agents across sessions. It notices when an agent is looping, shows what it actually did, and hands the work to the next agent.</p>
           <div id="install" class="hero-try">
-            <div class="hero-try-heading"><strong>Try it out</strong><span>macOS and Linux</span></div>
+            <div class="hero-try-heading"><strong>Get started</strong><span>macOS and Linux</span></div>
             <div class="hero-command"><code>curl -fsSL https://cully.net/install.sh | sh</code><button class="copy-button" type="button" aria-label="Copy Cully install command">Copy</button></div>
-            <p>Installs the local advisor and Cully skill for your coding agent, then starts the advisor daemon automatically. Open a new terminal before running <code>cully</code>. <a href="https://docs.cully.net/installation">Installation options ↗</a></p>
+            <p>Installs Cully and its local advisor. Then run <code>cully run claude</code>, <code>cully run codex</code> or <code>cully run cursor</code>. Open a new terminal before running <code>cully</code>. <a href="https://docs.cully.net/installation">Installation options ↗</a></p>
           </div>
           <div class="hero-actions">
-            <a class="button button-primary" href="https://docs.cully.net/quickstart">Read the quickstart <span aria-hidden="true">↗</span></a>
-            <a class="button button-text" href="https://docs.cully.net/session-optimization">How Cully keeps sessions focused <span aria-hidden="true">↗</span></a>
+            <a class="button button-primary" href="https://docs.cully.net/quickstart">Get started <span aria-hidden="true">↗</span></a>
+            <a class="button button-text" href="https://github.com/mcp-runtime/cully" target="_blank" rel="noopener noreferrer">View on GitHub <span aria-hidden="true">↗</span></a>
           </div>
-          <div class="hero-footnote"><span class="pulse-dot" aria-hidden="true"></span><span>Open source · Built for Claude Code, Codex and Cursor · Recall powered by <a href="https://mem0.ai/" target="_blank" rel="noopener noreferrer">Mem0 ↗</a></span></div>
+          <div class="hero-footnote"><span class="pulse-dot" aria-hidden="true"></span><span>Open source · Works across agents. Learns across sessions. · Recall powered by <a href="https://mem0.ai/" target="_blank" rel="noopener noreferrer">Mem0 ↗</a></span></div>
         </div>
 
-        <div class="hero-art" aria-label="Illustration of Cully's local guidance and shared memory">
+        <div class="hero-art" aria-label="A coding agent running inside the Cully terminal, with a health bar and an advisor warning">
           <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
           <div class="art-glow"></div>
           <div class="mock-window">
-            <div class="mock-topbar"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>cully / your workspace</span><span class="mock-topbar-icon">⌘</span></div>
-            <div class="mock-body">
-              <div class="mock-label"><span class="label-square"></span> LOCAL ADVISOR <span class="mock-live">● ACTIVE</span></div>
-              <div class="mock-title">A clearer view of the work in front of you.</div>
-              <div class="status-row"><span class="status-icon">✦</span><div><strong>Session looks healthy</strong><small>Context is within a comfortable range</small></div><span class="status-tick">↗</span></div>
-              <div class="suggestion-row"><span class="suggestion-icon">↗</span><div><strong>One useful suggestion</strong><small>Preview a project instruction update</small></div><span class="suggestion-arrow">→</span></div>
-              <div class="mock-divider"></div>
-              <div class="mock-label"><span class="label-circle"></span> SHARED MEMORY</div>
-              <div class="memory-card"><span class="memory-spark">✳</span><div><strong>Last time, you decided…</strong><p>Keep the OAuth resource URL exact across clients and services.</p><span>mcp-runtime/cully · decision</span></div></div>
-              <div class="mock-command">$ <span>cully status</span><span class="cursor-block"></span></div>
+            <div class="mock-topbar"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>cully run codex</span><span class="mock-topbar-icon">⌘</span></div>
+            <div class="mock-body term-mock">
+              <div class="term-agent"><span class="term-dim">&gt;</span> fix the resource validation test<br><span class="term-dim">● ran</span> go test ./auth/...<br><span class="term-bad">✕ FAIL</span> <span class="term-dim">TestValidateResource</span><br><span class="term-dim">● edited</span> auth/resource.go<br><span class="term-dim">● ran</span> go test ./auth/...<br><span class="term-bad">✕ FAIL</span> <span class="term-dim">TestValidateResource</span></div>
+              <div class="term-hud"><span>── <b>Codex</b></span><span>oauth:main</span><span>27m</span><span>Context 63%</span><span class="term-warn">⚠ Loop 3x</span><span>● 2 unchecked</span><span class="term-dim">── Ctrl+] advisor ──</span></div>
+              <div class="term-advice"><span class="term-badge">CAUTION</span> Cully noticed something: the same command failed 3 times after edits. Inspect the first failure before editing again.</div>
+              <div class="mock-command">$ <span>cully rescue</span><span class="cursor-block"></span></div>
             </div>
           </div>
-          <div class="floating-note"><span class="floating-icon">✳</span><span>Pick up where you left off.</span></div>
+          <div class="floating-note"><span class="floating-icon">✳</span><span>Your agent might be stuck.</span></div>
         </div>
       </section>
 
-      <section class="agent-strip" aria-label="Supported agents"><div class="section-wrap agent-strip-inner"><span>Works where you work</span><div><span class="agent-symbol">✳</span> Claude Code</div><div><span class="agent-symbol codex-symbol">◈</span> Codex</div><div><span class="agent-symbol cursor-symbol">▰</span> Cursor</div></div></section>
+      <section class="agent-strip" aria-label="Supported agents"><div class="section-wrap agent-strip-inner"><span>One terminal for every agent</span><div><span class="agent-symbol">✳</span> Claude Code</div><div><span class="agent-symbol codex-symbol">◈</span> Codex</div><div><span class="agent-symbol cursor-symbol">▰</span> Cursor CLI</div><div><span class="agent-symbol">＋</span> Any agent you add</div></div></section>
 
-      <section id="paths" class="section-wrap paths-section" aria-labelledby="paths-title">
-        <div class="section-intro"><div><div class="kicker">MAKE IT YOURS</div><h2 id="paths-title">For yourself.<br><em>For your team.</em></h2></div><p>Start with your own coding agent, or give everyone in your organization a shared way to work with Cully.</p></div>
-        <div class="paths-grid">
-          <article class="path-card"><div class="path-number">01 / YOURSELF</div><h3>Work better on your own.</h3><p>Install Cully, then run <code>cully setup --agent codex</code> to prepare its local services, credentials and Codex connection. Choose Claude Code or Cursor with the same flag.</p><div class="path-links"><a href="https://docs.cully.net/quickstart">Start for yourself <span aria-hidden="true">↗</span></a><a href="https://docs.cully.net/hosting">Run your own server <span aria-hidden="true">↗</span></a></div></article>
-          <article class="path-card path-card-team"><div class="path-number">02 / YOUR TEAM</div><h3>Bring Cully to your organization.</h3><p>The Cully maintainer runs its MCP endpoint on <a href="https://mcpruntime.org">MCP Runtime</a>. Your team can use that Kubernetes deployment pattern with private memory for each person and sign-in through its identity provider.</p><div class="path-links"><a href="https://docs.cully.net/team-deployment#example-run-cully-with-mcp-runtime">See the deployment <span aria-hidden="true">↗</span></a><a href="https://docs.cully.net/oauth">Set up OAuth <span aria-hidden="true">↗</span></a></div></article>
+      <section id="loop" class="section-wrap product-section" aria-labelledby="loop-title">
+        <div class="section-intro"><div><div class="kicker">01 / THE LOOP</div><h2 id="loop-title">Observe. Understand.<br><em>Remember. Advise. Improve.</em></h2></div><p>Coding agents are powerful, but each one mostly sees the task in front of it. Cully keeps track of the broader development process around them.</p></div>
+        <div class="optimization-grid">
+          <article><span>01</span><h4>Observe</h4><p>The Cully terminal and agent hooks turn tool calls into small events: an edit, a check, a search, a memory call.</p></article>
+          <article><span>02</span><h4>Understand</h4><p>A private session journal shows what happened: the same test failing three times, edits nobody checked.</p></article>
+          <article><span>03</span><h4>Remember</h4><p>Decisions, attempts, results and next steps are saved through MCP and found again by meaning.</p></article>
+          <article><span>04</span><h4>Advise</h4><p>A second pair of eyes for your coding agent. It warns about loops, context pressure and missing verification.</p></article>
+          <article><span>05</span><h4>Improve</h4><p>Cully notices how you usually ship in a project, such as running checks after editing, and says when a session skips it.</p></article>
+          <article><span>06</span><h4>Across agents</h4><p>Start in Claude Code, continue in Codex, finish in Cursor. The record belongs to the project, not to one agent.</p></article>
         </div>
       </section>
 
       <section id="product" class="section-wrap product-section" aria-labelledby="product-title">
-        <div class="section-intro"><div><div class="kicker">01 / THE IDEA</div><h2 id="product-title">Less starting over.<br><em>More moving forward.</em></h2></div><p>Agents are good at the task in front of them. Cully gives you a way to guide the session you are in and keep the lessons that should last beyond it.</p></div>
+        <div class="section-intro"><div><div class="kicker">02 / WHAT YOU GET</div><h2 id="product-title">See the session.<br><em>Steer it.</em></h2></div><p>Every number Cully shows is measured. A signal it does not have is shown as missing, never guessed.</p></div>
         <div class="feature-grid">
-          <article class="feature-card feature-green"><div class="feature-number">01 <span>↗</span></div><div class="feature-visual status-visual"><div class="mini-line"><span>SESSION HEALTH</span><b>GOOD</b></div><div class="meter"><span></span></div><div class="mini-line muted"><span>Context pressure</span><span>Comfortable</span></div></div><h3>Stay aware in the moment.</h3><p>The local advisor surfaces session signals and practical suggestions in the agent tools you already use.</p><a href="https://docs.cully.net/advisor">Explore local guidance <span aria-hidden="true">→</span></a></article>
-          <article class="feature-card feature-cream"><div class="feature-number">02 <span>↗</span></div><div class="feature-visual memory-visual"><div class="memory-visual-card"><span>✳ &nbsp; SAVED FOR LATER</span><strong>We chose the smaller, safer change.</strong><small>project · decision · today</small></div><div class="memory-visual-shadow"></div></div><h3>Keep what matters.</h3><p>Your connected agent looks up relevant work and saves concise summaries as tasks finish. PostgreSQL keeps the notes; Mem0 helps the next agent find them by meaning.</p><a href="https://docs.cully.net/memory">Explore shared memory <span aria-hidden="true">→</span></a></article>
-          <article class="feature-card feature-peach"><div class="feature-number">03 <span>↗</span></div><div class="feature-visual preview-visual"><span>CHANGE PREVIEW</span><div class="preview-line"><i>+</i> Add a focused project note</div><div class="preview-line dim"><i>+</i> Keep your existing settings</div><div class="preview-button">Apply when you are ready →</div></div><h3>Make changes on purpose.</h3><p>Review a dry run before applying an improvement. Cully keeps unrelated, user-owned settings intact.</p><a href="https://docs.cully.net/advisor#commands">Explore suggestions <span aria-hidden="true">→</span></a></article>
-        </div>
-        <div id="session-optimization" class="optimization-panel">
-          <div class="optimization-heading"><div><div class="kicker">HOW CULLY HELPS</div><h3>Less repeated work. More checked progress.</h3></div><p>These are the specific ways Cully keeps an agent focused while you work and test.</p></div>
-          <div class="optimization-grid">
-            <article><span>01</span><h4>Recall only what matters</h4><p>Start with three short project and task notes. Open a full record only when its details are needed.</p></article>
-            <article><span>02</span><h4>Keep a session trail</h4><p>Save the task, approach, result, missed step and next action with an opaque reference to the agent session.</p></article>
-            <article><span>03</span><h4>Find decisions by meaning</h4><p>Mem0 helps another connected agent find related work even when it asks in different words.</p></article>
-            <article><span>04</span><h4>Watch context pressure</h4><p>From available session signals, the local advisor points to the agent's own context controls when useful.</p></article>
-            <article><span>05</span><h4>Break wasteful loops</h4><p>Advice can flag repeated searches, tool failures or missing integrations and suggest a focused next move.</p></article>
-            <article><span>06</span><h4>Check before handoff</h4><p>The advisor can suggest a verifier or better test workflow; the saved note says what actually passed.</p></article>
-          </div>
-          <p class="optimization-caveat">Live advisor signals are richest in Claude Code. Codex and Cursor still get Cully's continuity hooks and the controls their clients expose.</p>
-          <a class="inline-link" href="https://docs.cully.net/session-optimization">See how session optimization works <span aria-hidden="true">↗</span></a>
+          <article class="feature-card feature-green"><div class="feature-number">01 <span>↗</span></div><div class="feature-visual status-visual"><div class="mini-line"><span>ADVISOR</span><b>LOOP</b></div><div class="meter"><span></span></div><div class="mini-line muted"><span>Same command</span><span>failed 3 times</span></div></div><h3>A second pair of eyes.</h3><p>The advisor watches the session while the agent works on the task. Click it in the terminal to preview a suggestion before anything changes.</p><a href="https://docs.cully.net/advisor">Explore the advisor <span aria-hidden="true">→</span></a></article>
+          <article class="feature-card feature-cream"><div class="feature-number">02 <span>↗</span></div><div class="feature-visual memory-visual"><div class="memory-visual-card"><span>▶ &nbsp; REPLAY</span><strong>Read resource.go → Edited resource.go → go test ✕ → go test ✓</strong><small>8 files touched · 2 checks failed · 1 loop</small></div><div class="memory-visual-shadow"></div></div><h3>See what the agent did, and how.</h3><p>Replay a session step by step: the files it read, edited, created and deleted, and the commands it ran.</p><a href="https://docs.cully.net/session-intelligence">Explore session intelligence <span aria-hidden="true">→</span></a></article>
+          <article class="feature-card feature-peach"><div class="feature-number">03 <span>↗</span></div><div class="feature-visual preview-visual"><span>HANDOFF</span><div class="preview-line"><i>✓</i> 34 tests passed</div><div class="preview-line dim"><i>!</i> Databricks integration unverified</div><div class="preview-button">Continue in Claude Code →</div></div><h3>Hand it to the next agent.</h3><p>A structured handoff, or <code>cully rescue</code> when a session is stuck, so a different agent continues without rebuilding the context.</p><a href="https://docs.cully.net/session-intelligence#handoff">Explore handoff <span aria-hidden="true">→</span></a></article>
         </div>
       </section>
 
-      <section id="how-it-works" class="workflow-section" aria-labelledby="workflow-title"><div class="section-wrap workflow-inner"><div class="workflow-heading"><div class="kicker">02 / GET GOING</div><h2 id="workflow-title">A simple path to<br><em>better continuity.</em></h2><p>Install Cully, set up its local services, and use it in the coding agent you already know.</p><a class="inline-link" href="https://docs.cully.net/quickstart">Read the quickstart <span aria-hidden="true">↗</span></a></div><div class="workflow-steps"><article><div class="step-number">01</div><div><h3>Install Cully</h3><p>Add Cully to your coding agent and start the local advisor.</p></div></article><article><div class="step-number">02</div><div><h3>Set up Cully</h3><p>Run <code>cully setup --agent codex</code> to prepare credentials, start the memory services and connect Codex.</p></div></article><article><div class="step-number">03</div><div><h3>Keep working</h3><p>Your agent finds relevant notes, records useful results, and helps you review session suggestions.</p></div></article></div></div></section>
+      <section id="use-cases" class="section-wrap product-section" aria-labelledby="use-cases-title">
+        <div class="section-intro"><div><div class="kicker">03 / IN THE WILD</div><h2 id="use-cases-title">Every agent session,<br><em>on the record.</em></h2></div><p>Deterministic reconstruction for postmortems, drift reconciliation for review, and replayable playbooks for onboarding. Plainly: Cully remembers what the agent did, and can prove it.</p></div>
+        <div class="feature-grid">
+          <article class="feature-card feature-cream"><div class="feature-number">01 <span>↗</span></div><div class="feature-visual memory-visual"><div class="memory-visual-card"><span>◉ &nbsp; RECORDER</span><strong>go test ✕ ×3 · loop span marked ⚠</strong><small>8 files touched · 2 checks failed · evidence kept</small></div><div class="memory-visual-shadow"></div></div><h3>A flight recorder for agent sessions.</h3><p>Every session lands in an append-only ledger, then replays step by step: each file, each command, each failed check. When a session derails, the postmortem starts where the loop began.</p><a href="https://docs.cully.net/use-cases">Explore use cases <span aria-hidden="true">→</span></a></article>
+          <article class="feature-card feature-green"><div class="feature-number">02 <span>↗</span></div><div class="feature-visual status-visual"><div class="mini-line"><span>SESSION AUDIT</span><b>DRIFT 1</b></div><div class="meter"><span></span></div><div class="mini-line muted"><span>Checks</span><span>2 passed · 1 failed</span></div></div><h3>Review the session, not just the diff.</h3><p>Reconstruct the verification trail behind a change and reconcile the record against Git before merge. Export a self-contained replay as review evidence.</p><a href="https://docs.cully.net/use-cases">Explore use cases <span aria-hidden="true">→</span></a></article>
+          <article class="feature-card feature-peach"><div class="feature-number">03 <span>↗</span></div><div class="feature-visual preview-visual"><span>PLAYBOOK</span><div class="preview-line"><i>✓</i> Shipped auth migration</div><div class="preview-line dim"><i>▶</i> Replay how it landed</div><div class="preview-button">Onboard from real sessions →</div></div><h3>Playbooks new engineers can replay.</h3><p>Strong sessions become onboarding material: watch how shipped work was actually made, while workflow hints teach project habits live.</p><a href="https://docs.cully.net/use-cases">Explore use cases <span aria-hidden="true">→</span></a></article>
+        </div>
+      </section>
+
+      <section id="terminal" class="section-wrap architecture-section" aria-labelledby="terminal-title">
+        <div class="section-intro"><div><div class="kicker">04 / THE TERMINAL</div><h2 id="terminal-title">One terminal.<br><em>Every agent.</em></h2></div><p>Cully is not another terminal emulator to learn. It is the observation surface that lets it understand what any agent is doing, using the agent exactly as before.</p></div>
+        <div class="optimization-panel">
+          <div class="optimization-grid">
+            <article><span>01</span><h4>Same wrapper everywhere</h4><p><code>cully run claude</code>, <code>codex</code>, <code>cursor</code> or any executable on your PATH gets the same health bar and advisor panel.</p></article>
+            <article><span>02</span><h4>A health bar you can trust</h4><p>Agent, project and branch, session time, context, loops and unchecked edits. Segments with no data are left out.</p></article>
+            <article><span>03</span><h4>An advisor you can click</h4><p>Click the panel or press Ctrl+] to open every suggestion. Nothing is applied until you approve a preview.</p></article>
+          </div>
+          <p class="optimization-caveat">Supported on macOS and Linux. Cursor support wraps the <code>cursor-agent</code> CLI. Cully's tool events come from each agent's hooks, so an agent without hooks gets the health bar and Git state but not loop detection or replay.</p>
+          <a class="inline-link" href="https://docs.cully.net/terminal">How the terminal works <span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+
+      <section id="how-it-works" class="workflow-section" aria-labelledby="workflow-title"><div class="section-wrap workflow-inner"><div class="workflow-heading"><div class="kicker">05 / GET GOING</div><h2 id="workflow-title">Three commands to<br><em>a smarter session.</em></h2><p>Install Cully, set up its local services, and run your agent through it.</p><a class="inline-link" href="https://docs.cully.net/quickstart">Read the quickstart <span aria-hidden="true">↗</span></a></div><div class="workflow-steps"><article><div class="step-number">01</div><div><h3>Install Cully</h3><p>Add Cully and its local advisor with one command.</p></div></article><article><div class="step-number">02</div><div><h3>Set it up</h3><p>Run <code>cully setup</code> to start the memory services and connect your agents.</p></div></article><article><div class="step-number">03</div><div><h3>Run your agent through Cully</h3><p>Run <code>cully run claude</code>, <code>codex</code> or <code>cursor</code>. Then try <code>cully status</code>, <code>cully replay</code> and <code>cully handoff</code>.</p></div></article></div></div></section>
 
       <section class="section-wrap architecture-section" aria-labelledby="architecture-title">
-        <div class="section-intro"><div><div class="kicker">03 / UNDER THE HOOD</div><h2 id="architecture-title">Built for the way<br><em>agents actually work.</em></h2></div><p>Cully brings together a background advisor, local session controls, skills, and MCP tools backed by durable memory.</p></div>
+        <div class="section-intro"><div><div class="kicker">06 / UNDER THE HOOD</div><h2 id="architecture-title">Built around the agent,<br><em>not in its way.</em></h2></div><p>Your agent talks to its model and tools directly. Cully draws around it, records small events and keeps durable notes in your own services.</p></div>
         <div class="architecture-flow">
-          <div class="flow-node"><span class="flow-icon">⌘</span><strong>Your coding agents</strong><small>Claude Code · Codex · Cursor</small><p>Keep working in the tools you already use.</p></div>
+          <div class="flow-node"><span class="flow-icon">⌘</span><strong>Your coding agents</strong><small>Claude Code · Codex · Cursor CLI · others</small><p>Keep working in the tools you already use.</p></div>
           <span class="flow-arrow" aria-hidden="true">↔</span>
-          <div class="flow-node"><span class="flow-icon">✳</span><strong>Cully at work</strong><small>Background advisor · CLI · skills · MCP</small><p>Session status, workflow suggestions, agent integrations, and tools to save and recall useful context.</p></div>
+          <div class="flow-node"><span class="flow-icon">✳</span><strong>Cully at work</strong><small>Terminal · hooks · journal · advisor · MCP</small><p>Health bar, loop detection, replay, handoff and rescue, plus tools to save and recall context.</p></div>
           <span class="flow-arrow" aria-hidden="true">↔</span>
           <div class="flow-node"><span class="flow-icon">▤</span><strong>Your records</strong><small>PostgreSQL · self-hosted Mem0</small><p>Durable source records and semantic recall, accessed through owner-scoped MCP tools.</p></div>
         </div>
         <p class="architecture-note">Run the standard memory stack on your laptop. OAuth is available for company team deployments. <a href="https://docs.cully.net/hosting">Self-hosting guide →</a></p>
         <div class="memory-foundation">
-          <div><div class="kicker">THE MEMORY ENGINE</div><h3>Semantic recall, powered by Mem0.</h3><p>Cully uses self-hosted Mem0 to index saved decisions, lessons, and project context by meaning. Your next agent can find relevant records even when it asks in different words. PostgreSQL keeps the source records; Mem0 powers semantic search across them.</p></div>
+          <div><div class="kicker">PRIVACY</div><h3>Your conversations aren't Cully's database.</h3><p>The local session journal keeps the time, the kind of tool, whether it passed, project-relative file paths and the program of a command. It never keeps prompts, file contents, command arguments or tool output, and you can turn off path recording. Project memory holds only the short summary your agent chooses to save.</p></div>
+          <a class="inline-link" href="https://docs.cully.net/privacy">Read what Cully records <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="memory-foundation">
+          <div><div class="kicker">PROJECT MEMORY</div><h3>Semantic recall, powered by Mem0.</h3><p>Cully uses self-hosted Mem0 to index saved decisions, lessons and project context by meaning. PostgreSQL keeps the source records; Mem0 powers semantic search across them.</p></div>
           <a class="inline-link" href="https://mem0.ai/" target="_blank" rel="noopener noreferrer">Explore Mem0 <span aria-hidden="true">↗</span></a>
         </div>
       </section>
@@ -122,7 +136,7 @@
       <section id="testimonials" class="testimonials-section" aria-labelledby="testimonials-title">
         <div class="section-wrap">
           <div class="community-heading">
-            <div><div class="kicker">04 / COMMUNITY</div><h2 id="testimonials-title">Better work.<br><em>Shared experiences.</em></h2><p>How does Cully fit into your workflow? We'd love to hear.</p></div>
+            <div><div class="kicker">07 / COMMUNITY</div><h2 id="testimonials-title">From real sessions.<br><em>In their words.</em></h2><p>How does Cully fit into your workflow? We'd love to hear.</p></div>
             <button class="button button-primary" type="button" data-open-testimonial>Share your experience <span aria-hidden="true">↗</span></button>
           </div>
           <div id="testimonial-gallery" hidden>
@@ -161,7 +175,7 @@
       </dialog>
     </main>
 
-    <footer class="site-footer section-wrap"><div><a class="brand" href="/" aria-label="Cully home"><span class="brand-mark" aria-hidden="true"><span></span></span><span>cully<span class="brand-dot">.</span></span></a><p>Your companion for better work<br>with AI agents.</p></div><div class="footer-links"><div><strong>Explore</strong><a href="#product">Product</a><a href="#how-it-works">How it works</a><a href="https://docs.cully.net/quickstart">Get started</a></div><div><strong>Resources</strong><a href="https://docs.cully.net/">Documentation</a><a href="https://docs.cully.net/session-optimization">Session optimization</a><a href="https://github.com/mcp-runtime/cully">GitHub</a><a href="https://github.com/mcp-runtime/cully/releases">Releases</a></div></div><div class="footer-bottom"><span>© <span id="year">2026</span> Cully. Built in the open.</span><span>Make the next session a little better.</span></div></footer>
+    <footer class="site-footer section-wrap"><div><a class="brand" href="/" aria-label="Cully home"><span class="brand-mark" aria-hidden="true"><span></span></span><span>cully<span class="brand-dot">.</span></span></a><p>Your coding agents<br>need a copilot too.</p></div><div class="footer-links"><div><strong>Explore</strong><a href="#loop">The loop</a><a href="#use-cases">Use cases</a><a href="#terminal">Terminal</a><a href="#how-it-works">How it works</a><a href="https://docs.cully.net/quickstart">Get started</a></div><div><strong>Resources</strong><a href="https://docs.cully.net/">Documentation</a><a href="https://docs.cully.net/capabilities">Current capabilities</a><a href="https://docs.cully.net/product-direction">Product direction</a><a href="https://github.com/mcp-runtime/cully">GitHub</a><a href="https://github.com/mcp-runtime/cully/releases">Releases</a></div></div><div class="footer-bottom"><span>© <span id="year">2026</span> Cully. Built in the open.</span><span>Works across agents. Learns across sessions.</span></div></footer>
   </div>
 </body>
 </html>

@@ -6,6 +6,11 @@ import (
 	"path/filepath"
 )
 
+// Cursor post-tool events that feed the Cully terminal panel.
+var cursorSignalEvents = []string{"afterShellExecution", "afterFileEdit", "afterMCPExecution"}
+
+const cursorSignalSub = "pane-signal cursor"
+
 func continuityCommand(exe, agent, event string) string {
 	return quote(exe) + " _internal continuity " + agent + " " + event
 }
@@ -32,7 +37,14 @@ func installCodexContinuityHooks() error {
 		return err
 	}
 	setEventHook(m, "SessionStart", continuityCommand(exe, "codex", "start"), "continuity codex start")
-	setEventHook(m, "Stop", continuityCommand(exe, "codex", "stop"), "continuity codex stop")
+	removeEventHook(m, "Stop", "", "continuity codex stop") // migrate older blocking installs
+	setEventHook(m, "PostToolUse", quote(exe)+" _internal codex-signal", "codex-signal")
+	hooks := m["hooks"].(map[string]any)
+	groups := toList(hooks["PostToolUse"])
+	group := groups[len(groups)-1].(map[string]any)
+	handler := toList(group["hooks"])[0].(map[string]any)
+	handler["async"] = true
+	handler["timeout"] = 5
 	return writeSettings(path, m)
 }
 
@@ -47,6 +59,7 @@ func uninstallCodexContinuityHooks() error {
 	}
 	removeEventHook(m, "SessionStart", "", "continuity codex start")
 	removeEventHook(m, "Stop", "", "continuity codex stop")
+	removeEventHook(m, "PostToolUse", "", "codex-signal")
 	return writeSettings(path, m)
 }
 
@@ -68,6 +81,12 @@ func installCursorContinuityHooks() error {
 	setCursorHook(m, "afterAgentResponse", continuityCommand(exe, "cursor", "response"), "continuity cursor response")
 	setCursorHook(m, "stop", continuityCommand(exe, "cursor", "stop"), "continuity cursor stop")
 	setCursorHook(m, "sessionEnd", continuityCommand(exe, "cursor", "end"), "continuity cursor end")
+	for _, event := range cursorSignalEvents {
+		setCursorHook(m, event, quote(exe)+" _internal pane-signal cursor", cursorSignalSub)
+		hooks := m["hooks"].(map[string]any)
+		list := toList(hooks[event])
+		list[len(list)-1].(map[string]any)["timeout"] = 5
+	}
 	return writeSettings(path, m)
 }
 
@@ -84,6 +103,9 @@ func uninstallCursorContinuityHooks() error {
 	removeCursorHook(m, "afterAgentResponse", "continuity cursor response")
 	removeCursorHook(m, "stop", "continuity cursor stop")
 	removeCursorHook(m, "sessionEnd", "continuity cursor end")
+	for _, event := range cursorSignalEvents {
+		removeCursorHook(m, event, cursorSignalSub)
+	}
 	return writeSettings(path, m)
 }
 

@@ -362,3 +362,13 @@ h1 em { color: #54926b; }
   *, *:before, *:after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
   .testimonial-card { animation: none; }
 }
+
+/* Terminal mock in the hero */
+.term-mock{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.5}
+.term-agent{padding:.25rem 0 .6rem}
+.term-dim{opacity:.6}
+.term-bad{color:#b3412e}
+.term-warn{color:#a8700c;font-weight:600}
+.term-hud{display:flex;flex-wrap:wrap;gap:.35rem .75rem;border-top:1px solid currentColor;border-top-color:rgba(0,0,0,.18);padding:.45rem 0 .3rem}
+.term-advice{padding:.35rem 0 .6rem}
+.term-badge{display:inline-block;font-size:.66rem;letter-spacing:.06em;padding:.05rem .4rem;border-radius:.25rem;background:#f3d9a4;color:#5a3d00;margin-right:.35rem}

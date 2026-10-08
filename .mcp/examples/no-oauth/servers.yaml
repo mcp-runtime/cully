@@ -47,6 +47,18 @@ servers:
         description: List recent source records
         requiredTrust: low
         sideEffect: read
+      - name: cully_context
+        description: Bounded prior-work previews
+        requiredTrust: low
+        sideEffect: read
+      - name: cully_session
+        description: Start or update the agent session and task
+        requiredTrust: medium
+        sideEffect: write
+      - name: cully_session_get
+        description: Get the agent session and task
+        requiredTrust: low
+        sideEffect: read
       - name: cully_get
         description: Get a source record
         requiredTrust: low

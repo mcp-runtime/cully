@@ -17,36 +17,19 @@ type codingAgent struct {
 }
 
 func codingAgents(cwd string) []codingAgent {
-	claudeDir := ConfigDir()
-	codexDir := CodexConfigDir()
-	cursorDir := CursorConfigDir()
-	sharedSkills := sharedSkillRoot(cwd)
-	return []codingAgent{
-		{
-			ID:          "claude",
-			Name:        "Claude Code",
-			ConfigDir:   claudeDir,
-			ProjectDirs: []string{sharedSkills, filepath.Join(cwd, ".claude", "agents"), filepath.Join(cwd, ".claude", "skills")},
-			UserDirs:    []string{filepath.Join(claudeDir, "agents"), filepath.Join(claudeDir, "skills"), filepath.Join(claudeDir, "plugins")},
-			MCPFiles:    []string{filepath.Join(cwd, ".mcp.json"), filepath.Join(claudeDir, "settings.json"), homeClaudeJSON()},
-		},
-		{
-			ID:          "codex",
-			Name:        "Codex",
-			ConfigDir:   codexDir,
-			ProjectDirs: []string{sharedSkills, filepath.Join(cwd, ".codex", "agents"), filepath.Join(cwd, ".codex", "skills"), filepath.Join(cwd, ".agents")},
-			UserDirs:    []string{filepath.Join(codexDir, "agents"), filepath.Join(codexDir, "skills"), filepath.Join(codexDir, "plugins"), filepath.Join(codexDir, "prompts")},
-			MCPFiles:    []string{filepath.Join(cwd, ".mcp.json"), filepath.Join(codexDir, "mcp.json")},
-		},
-		{
-			ID:          "cursor",
-			Name:        "Cursor",
-			ConfigDir:   cursorDir,
-			ProjectDirs: []string{sharedSkills, filepath.Join(cwd, ".cursor", "commands")},
-			UserDirs:    []string{filepath.Join(cursorDir, "rules")},
-			MCPFiles:    []string{filepath.Join(cwd, ".cursor", "mcp.json"), filepath.Join(cursorDir, "mcp.json")},
-		},
+	out := make([]codingAgent, 0, len(agentCatalog()))
+	for _, spec := range agentCatalog() {
+		paths := spec.ConfigPaths(cwd)
+		out = append(out, codingAgent{
+			ID:          spec.ID,
+			Name:        spec.DisplayName,
+			ConfigDir:   spec.ConfigDir(),
+			ProjectDirs: paths.ProjectDirs,
+			UserDirs:    paths.UserDirs,
+			MCPFiles:    paths.MCPFiles,
+		})
 	}
+	return out
 }
 
 func sharedSkillRoot(cwd string) string {

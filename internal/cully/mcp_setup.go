@@ -24,9 +24,9 @@ func AddMCP(w io.Writer, agent, endpoint string, oauth bool) error {
 			return err
 		}
 		var detected []string
-		for _, candidate := range []string{"claude", "codex", "cursor"} {
-			if codingAgentPresent(candidate, cwd) {
-				detected = append(detected, candidate)
+		for _, spec := range agentCatalog() {
+			if codingAgentPresent(spec.ID, cwd) {
+				detected = append(detected, spec.ID)
 			}
 		}
 		if len(detected) != 1 {
@@ -34,38 +34,21 @@ func AddMCP(w io.Writer, agent, endpoint string, oauth bool) error {
 		}
 		agent = detected[0]
 	}
-	if agent != "claude" && agent != "codex" && agent != "cursor" {
+	spec, ok := lookupAgentSpec(agent)
+	if !ok {
 		return fmt.Errorf("unknown MCP agent %q; choose one of claude, codex or cursor", agent)
 	}
 	for _, target := range []string{agent} {
-		var path string
-		var err error
-		switch target {
-		case "claude":
-			path, err = claudeMCPConfigPath()
-			if err == nil {
-				err = addJSONMCP(path, endpoint, true)
-			}
-		case "cursor":
-			path = filepath.Join(CursorConfigDir(), "mcp.json")
-			err = addJSONMCP(path, endpoint, false)
-		case "codex":
-			path = codexConfigPath()
-			err = addTOMLMCP(path, endpoint)
+		path, err := spec.MCPPath()
+		if err == nil {
+			err = spec.SetupMCP(path, endpoint)
 		}
 		if err != nil {
 			return fmt.Errorf("configure %s MCP: %w", target, err)
 		}
 		fmt.Fprintf(w, "Cully MCP configured for %s in %s\n", target, path)
 		if oauth {
-			switch target {
-			case "codex":
-				fmt.Fprintln(w, "Sign in: codex mcp login cully")
-			case "claude":
-				fmt.Fprintln(w, "Restart Claude Code, then use /mcp to sign in to cully.")
-			case "cursor":
-				fmt.Fprintln(w, "Restart Cursor, then sign in to cully in MCP settings.")
-			}
+			fmt.Fprintln(w, spec.SignInHint)
 		} else {
 			fmt.Fprintln(w, "Connect to Cully directly; this server does not require sign-in.")
 		}
@@ -81,20 +64,15 @@ func RemoveMCPIfMatching(agent string, endpoints []string) error {
 	if len(endpoints) == 0 {
 		return nil
 	}
-	switch agent {
-	case "claude":
-		path, err := claudeMCPConfigPath()
-		if err != nil {
-			return err
-		}
-		return removeJSONMCPIfMatching(path, endpoints)
-	case "cursor":
-		return removeJSONMCPIfMatching(filepath.Join(CursorConfigDir(), "mcp.json"), endpoints)
-	case "codex":
-		return removeTOMLMCPIfMatching(codexConfigPath(), endpoints)
-	default:
+	spec, ok := lookupAgentSpec(agent)
+	if !ok {
 		return fmt.Errorf("unknown MCP agent %q", agent)
 	}
+	path, err := spec.MCPPath()
+	if err != nil {
+		return err
+	}
+	return spec.RemoveMCP(path, endpoints)
 }
 
 func matchingMCPEndpoint(value any, endpoints []string) bool {

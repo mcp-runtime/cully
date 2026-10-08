@@ -1,0 +1,24 @@
+Replay · Claude Code · demo:main · 2026-10-08 10:31 · 19m
+                                            ✕      ✕      ⚠               
+10:31 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━●─────────────── 10:50
+  10:31  Claude Code started
+  10:31  Read     internal/auth/resource.go
+  10:34  Edited   internal/auth/resource.go
+  10:34  Edited   internal/auth/resource.go
+  10:35  Created  internal/auth/resource_test.go
+  10:42  Ran      go test  ✕ failed
+  10:43  Edited   internal/auth/resource.go
+  10:44  Ran      go test  ✕ failed
+  10:45  Edited   internal/auth/resource.go
+▸ 10:46  Ran      go test  ✕ failed
+
+
+────────────────────────────────────────────────────────────────────────────────
+FILE ACTIVITY (2)
+internal/auth/
+  ~ resource.go ████ ×4 ▲
+  + resource_test.go
+
+
+files 2 · checks 0 passed / 3 failed · loops 0 · elapsed 15m / 19m · paused 1x
+space pause · ←/→ step · ↑/↓ speed · f files · / filter · q quit

@@ -1,10 +1,5 @@
 name: Personal Cully deployment
 on:
-  workflow_call:
-    inputs:
-      tag:
-        required: true
-        type: string
   workflow_dispatch:
     inputs:
       tag:
@@ -13,7 +8,7 @@ on:
         type: string
 permissions:
   contents: read
-  packages: write
+  packages: read
 concurrency:
   group: cully-personal-production
   cancel-in-progress: false
@@ -28,44 +23,7 @@ env:
   SERVER_NAME: cully
   IMAGE_REGISTRY: registry.mcpruntime.org/org/cully-mcp
 jobs:
-  service-images:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag }}
-      - name: Validate release tag and deployment controller
-        run: |
-          python3 -c 'import os,re; assert re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+(?:[-.][A-Za-z0-9.-]+)?", os.environ["RELEASE_TAG"])'
-          python3 -m unittest discover -s deploy -p 'test_personal_data_controller.py' -v
-          sh -n deploy/bootstrap-personal-data.sh
-      - name: Check live MCP Auth issuer and signing keys
-        run: python3 deploy/check_personal_oauth.py issuer
-      - name: Build MCP, data and local-model Mem0 images
-        run: |
-          docker build -f Dockerfile --build-arg VERSION="$RELEASE_TAG" -t "$MCP_IMAGE" .
-          docker build -f Dockerfile.data-api -t "$DATA_IMAGE" .
-          docker build -f Dockerfile.mem0 -t "$MEM0_IMAGE" .
-      - name: Scan pinned Mem0 image
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ env.MEM0_IMAGE }}
-          format: table
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '0'
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish release service images
-        run: |
-          docker push "$MCP_IMAGE"
-          docker push "$DATA_IMAGE"
-          docker push "$MEM0_IMAGE"
   deploy:
-    needs: service-images
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -80,13 +38,30 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag }}
+      - name: Validate release tag and deployment controller
+        run: |
+          python3 -c 'import os,re; assert re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+(?:[-.][A-Za-z0-9.-]+)?", os.environ["RELEASE_TAG"])'
+          python3 -m unittest discover -s deploy -p 'test_personal_data_controller.py' -v
+          sh -n deploy/bootstrap-personal-data.sh
+      - name: Check live MCP Auth issuer and signing keys
+        run: python3 deploy/check_personal_oauth.py issuer
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check published release images
+        run: |
+          docker manifest inspect "$MCP_IMAGE" > /dev/null
+          docker manifest inspect "$DATA_IMAGE" > /dev/null
+          docker manifest inspect "$MEM0_IMAGE" > /dev/null
       - name: Check deployment credentials
         env:
           DEPLOY_KEY: ${{ secrets.CULLY_PERSONAL_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.CULLY_PERSONAL_KNOWN_HOSTS || secrets.CULLY_WEB_KNOWN_HOSTS }}
           DATA_API_TOKEN: ${{ secrets.CULLY_DATA_API_TOKEN }}
         run: |
-          test "$DEPLOY_ENABLED" = true || { echo '::error::Set CULLY_PERSONAL_DEPLOY_ENABLED=true after the VM bootstrap; a release must not silently skip deployment.'; exit 1; }
+          test "$DEPLOY_ENABLED" = true || { echo '::error::Set CULLY_PERSONAL_DEPLOY_ENABLED=true before deploying.'; exit 1; }
           test -n "$MCP_PLATFORM_API_TOKEN"
           test -n "$DATA_API_TOKEN"
           test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER" && test -n "$DEPLOY_PORT"

@@ -68,12 +68,21 @@ func RunStatusline(r io.Reader, w io.Writer) {
 	data, _ := io.ReadAll(r)
 	var in slInput
 	_ = json.Unmarshal(data, &in)
+	pane := os.Getenv("CULLY_PANE_SESSION")
 	if !hasStatuslinePayload(data, in) {
-		RunGenericStatusline(w, statuslineAgent())
+		if pane == "" {
+			RunGenericStatusline(w, statuslineAgent())
+		}
 		return
 	}
 	writeState(in)
 	session := in.SessionID
+	if pane != "" {
+		// Inside the Cully terminal this command is a data feed for the panel:
+		// record the snapshot under the pane session and print nothing.
+		patchSnapshotFromStatusline(in, pane)
+		return
+	}
 	patchSnapshotFromStatusline(in, session)
 	chime := maybeChime(session, int(in.ContextWindow.UsedPercentage))
 	snap := readSnapshot(session)
@@ -144,35 +153,6 @@ func hasStatuslinePayload(data []byte, in slInput) bool {
 		in.ContextWindow.UsedPercentage > 0
 }
 
-func statuslineAgent() string {
-	if v := strings.TrimSpace(os.Getenv("CULLY_AGENT")); v != "" {
-		return v
-	}
-	switch {
-	case os.Getenv("CURSOR_TRACE_ID") != "", os.Getenv("CURSOR_SESSION_ID") != "", os.Getenv("CURSOR_WORKSPACE_ID") != "":
-		return "cursor"
-	case os.Getenv("CODEX_HOME") != "", os.Getenv("CODEX_SANDBOX") != "", os.Getenv("CODEX_SESSION_ID") != "":
-		return "codex"
-	default:
-		return "agent"
-	}
-}
-
-func agentDisplayName(agent string) string {
-	switch strings.ToLower(strings.TrimSpace(agent)) {
-	case "claude", "claude-code", "claude code":
-		return "Claude"
-	case "codex":
-		return "Codex"
-	case "cursor":
-		return "Cursor"
-	case "":
-		return "Agent"
-	default:
-		return strings.TrimSpace(agent)
-	}
-}
-
 func patchSnapshotFromStatusline(in slInput, session string) {
 	if session == "" {
 		return
@@ -194,7 +174,12 @@ func patchSnapshotFromStatusline(in slInput, session string) {
 		snap.CtxSize = in.ContextWindow.ContextWindowSize
 		snap.CtxTokens = in.ContextWindow.TotalInputTokens
 		snap.CostUSD = in.Cost.TotalCostUSD
+		snap.TokensOut = in.ContextWindow.TotalOutputTokens
 	}
+	if in.Model.DisplayName != "" {
+		snap.Model = in.Model.DisplayName
+	}
+	snap.LinesAdded, snap.LinesRemoved = in.Cost.TotalLinesAdded, in.Cost.TotalLinesRemoved
 	fiveH := int(in.RateLimits.FiveHour.UsedPercentage)
 	if fiveH == 0 {
 		fiveH = st.FiveH
@@ -214,7 +199,11 @@ func patchSnapshotFromStatusline(in slInput, session string) {
 		Searches:       snap.Searches,
 		GraphifyGraph:  snap.GraphifyGraph,
 	}
-	snap.Phase = string(detectPhase(sig, in.PR.ReviewState))
+	// Native instruments omit workflow tool totals. Keep a real analyzed Messy
+	// result until the next analyzer updates its observed failure/recovery data.
+	if snap.Phase != string(PhaseMessy) {
+		snap.Phase = string(detectPhase(sig, in.PR.ReviewState))
+	}
 	writeSnapshot(session, snap)
 }
 
@@ -263,6 +252,10 @@ func reportAge(session string) time.Duration {
 // size and staleness. Only that session's report is ever consulted — there is
 // deliberately no global fallback, so another session's advice cannot appear.
 func readSuggestions(session string) []string {
+	return readSuggestionsLimit(session, 4)
+}
+
+func readSuggestionsLimit(session string, limit int) []string {
 	if session == "" {
 		return nil
 	}
@@ -283,12 +276,15 @@ func readSuggestions(session string) []string {
 	if json.Unmarshal(b, &rep) != nil {
 		return nil
 	}
+	if rep.Session != session {
+		return nil
+	}
 	var out []string
 	for _, ln := range rep.Lines {
 		if ln = strings.TrimSpace(ln); ln != "" {
 			out = append(out, ln)
 		}
-		if len(out) >= 4 { // safety cap on suggestion rows
+		if len(out) >= limit {
 			break
 		}
 	}
@@ -460,6 +456,8 @@ func formatPhaseBadge(phase string) string {
 
 func phaseColor(phase string) string {
 	switch strings.ToLower(strings.TrimSpace(phase)) {
+	case "messy":
+		return red
 	case "emergency", "emer":
 		return red
 	case "preflight":
@@ -565,4 +563,48 @@ func gitBranch(dir string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// readClaudeContext fills the panel's context gauge from the snapshot written
+// by Claude's statusline data feed. It leaves the view unchanged until Claude
+// has reported a context window.
+func readClaudeContext(session string, view *sessionView) {
+	view.mergeUpdate(decodeSnapshot(readSnapshot(session)))
+}
+
+// decodeSnapshot maps an already-read session snapshot to instruments. It
+// performs no filesystem access; the shell supplies the snapshot.
+func decodeSnapshot(snap cullySnapshot) InstrumentUpdate {
+	upd := InstrumentUpdate{Source: sourceSnapshot}
+	if snap.Model != "" {
+		upd.Model = &snap.Model
+	}
+	if snap.CtxSize <= 0 {
+		return upd
+	}
+	left := min(100, max(0, 100-snap.ContextUsedPct))
+	in, out := fmtTokens(snap.CtxTokens), fmtTokens(snap.TokensOut)
+	five, weekly := fmt.Sprintf("%d%% used", snap.Rate5hPct), fmt.Sprintf("%d%% used", snap.Rate7dPct)
+	upd.ContextLeft, upd.Input, upd.Output, upd.FiveHour, upd.Weekly = &left, &in, &out, &five, &weekly
+	if snap.LinesAdded > 0 || snap.LinesRemoved > 0 {
+		upd.LinesAdded, upd.LinesRemoved = &snap.LinesAdded, &snap.LinesRemoved
+	}
+	return upd
+}
+
+// sessionContextUsed returns the percent of the context window a terminal
+// session has used, or -1 when the agent has not reported a window size.
+func sessionContextUsed(session string) int {
+	if session == "" {
+		return -1
+	}
+	if snap := readSnapshot(session); snap.CtxSize > 0 {
+		return min(100, max(0, snap.ContextUsedPct))
+	}
+	if path := sessionStateFile(session); path != "" {
+		if state := readCodexSessionState(path); state.ContextKnown {
+			return min(100, max(0, 100-state.ContextLeft))
+		}
+	}
+	return -1
 }

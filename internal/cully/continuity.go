@@ -22,6 +22,7 @@ const continuityFinish = "Cully check: If this turn produced substantive work, a
 var substantiveResponse = regexp.MustCompile(`(?i)\b(implement(?:ed)?|fix(?:ed)?|chang(?:e|ed)|add(?:ed)?|remov(?:e|ed)|refactor(?:ed)?|test(?:ed|s)?|deploy(?:ed)?|publish(?:ed)?|document(?:ed)?|decid(?:e|ed)|block(?:ed|er)?|discover(?:ed)?|learn(?:ed|t)|investigat(?:e|ed)|resolv(?:e|ed)|updat(?:e|ed))\b`)
 
 type continuityHookInput struct {
+	Cwd                  string `json:"cwd"`
 	StopHookActive       bool   `json:"stop_hook_active"`
 	LastAssistantMessage string `json:"last_assistant_message"`
 	Text                 string `json:"text"`
@@ -82,7 +83,10 @@ func RunContinuityHook(agent, event string, r io.Reader, w io.Writer) {
 	switch event {
 	case "start":
 		switch agent {
-		case "claude", "codex":
+		case "claude":
+			out = map[string]any{"hookSpecificOutput": map[string]any{"hookEventName": "SessionStart", "additionalContext": continuityPrompt(continuityStart, agent, in)}}
+		case "codex":
+			bindPane(in.Cwd, in.SessionID)
 			out = map[string]any{"hookSpecificOutput": map[string]any{"hookEventName": "SessionStart", "additionalContext": continuityPrompt(continuityStart, agent, in)}}
 		case "cursor":
 			out = map[string]any{"additional_context": continuityPrompt(continuityStart, agent, in)}
@@ -100,8 +104,16 @@ func RunContinuityHook(agent, event string, r io.Reader, w io.Writer) {
 			}
 		}
 	case "stop":
+		if agent == "cursor" && in.Status == "completed" && in.LoopCount == 0 && in.Cwd != "" {
+			if ref := continuitySessionRef(agent, in); ref != "" {
+				n := bumpCounter("advisor-" + ref)
+				if n == 1 || n%3 == 0 {
+					dispatchAdvisor(fmt.Sprintf("agent=cursor\nturns=%d\nsignal_scope=completed_turns_only\ncontext=unknown tools=unknown verification=unknown\n", n), ref, in.Cwd)
+				}
+			}
+		}
 		switch agent {
-		case "claude", "codex":
+		case "claude":
 			if !in.StopHookActive && usefulResponse(in.LastAssistantMessage) {
 				out = map[string]any{"decision": "block", "reason": continuityPrompt(continuityFinish, agent, in)}
 			}

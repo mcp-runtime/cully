@@ -1,4 +1,4 @@
-// Package migrations applies the explicit, transactional Cully schema migration.
+// Package migrations applies each Cully schema migration in its own transaction.
 package migrations
 
 import (
@@ -13,7 +13,25 @@ var schema string
 //go:embed 003_session_ref.sql
 var sessionRefSchema string
 
+//go:embed 004_sessions_tasks.sql
+var sessionsTasksSchema string
+
+//go:embed 005_validate_task_entry_type.sql
+var validateTaskEntryTypeSchema string
+
 func Apply(ctx context.Context, pool *pgxpool.Pool) error {
+	for _, m := range []struct {
+		version int
+		sql     string
+	}{{2, schema}, {3, sessionRefSchema}, {4, sessionsTasksSchema}, {5, validateTaskEntryTypeSchema}} {
+		if err := applyOne(ctx, pool, m.version, m.sql); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func applyOne(ctx context.Context, pool *pgxpool.Pool, version int, sql string) error {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -26,25 +44,14 @@ func Apply(ctx context.Context, pool *pgxpool.Pool) error {
 		return err
 	}
 	var exists bool
-	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM cully_schema_versions WHERE version=2)").Scan(&exists); err != nil {
+	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM cully_schema_versions WHERE version=$1)", version).Scan(&exists); err != nil {
 		return err
 	}
 	if !exists {
-		if _, err = tx.Exec(ctx, schema); err != nil {
+		if _, err = tx.Exec(ctx, sql); err != nil {
 			return err
 		}
-		if _, err = tx.Exec(ctx, "INSERT INTO cully_schema_versions(version) VALUES(2)"); err != nil {
-			return err
-		}
-	}
-	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM cully_schema_versions WHERE version=3)").Scan(&exists); err != nil {
-		return err
-	}
-	if !exists {
-		if _, err = tx.Exec(ctx, sessionRefSchema); err != nil {
-			return err
-		}
-		if _, err = tx.Exec(ctx, "INSERT INTO cully_schema_versions(version) VALUES(3)"); err != nil {
+		if _, err = tx.Exec(ctx, "INSERT INTO cully_schema_versions(version) VALUES($1)", version); err != nil {
 			return err
 		}
 	}

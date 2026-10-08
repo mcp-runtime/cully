@@ -23,9 +23,8 @@ jobs:
           args: release --clean --release-notes .github/release-notes/${{ github.ref_name }}.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  personal-deployment:
+  service-images:
     needs: release
-    uses: ./.github/workflows/personal-deploy.yml
+    uses: ./.github/workflows/publish-images.yml
     with:
       tag: ${{ github.ref_name }}
-    secrets: inherit

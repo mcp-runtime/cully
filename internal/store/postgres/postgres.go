@@ -54,9 +54,12 @@ func (s *Store) Execute(ctx context.Context, owner string, r memory.Request) (me
 	defer tx.Rollback(ctx)
 	result, err := s.execute(ctx, tx, owner, r)
 	if err != nil {
+		if errors.Is(err, memory.ErrInvalid) {
+			return memory.Result{}, err
+		}
 		return memory.Result{}, fmt.Errorf("%w: database operation failed", memory.ErrUnavailable)
 	}
-	if s.Mem0Enabled && (r.Operation == "log" || (r.Operation == "update" && result.Entry != nil) || (r.Operation == "delete" && result.Deleted)) {
+	if s.Mem0Enabled && (r.Operation == "log" || (r.Operation == "session" && result.Entry != nil) || (r.Operation == "update" && result.Entry != nil) || (r.Operation == "delete" && result.Deleted)) {
 		entryID := ""
 		if result.Entry != nil {
 			entryID = result.Entry.ID
@@ -85,6 +88,12 @@ func (s *Store) execute(ctx context.Context, tx pgx.Tx, owner string, r memory.R
 		e, err := one(ctx, tx, `INSERT INTO cully_entries AS e (id,owner_subject,section,project_url,session_ref,category,entry_type,summary,approach,outcome,issue,learning,next_steps,assistant,tags,occurred_at) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING `+record, uuid.NewString(), owner, v.Section, v.ProjectURL, v.SessionRef, v.Category, v.EntryType, v.Summary, v.Approach, v.Outcome, v.Issue, v.Learning, v.NextSteps, v.Assistant, v.Tags, when)
 		out.Entry = e
 		return out, err
+	case "session":
+		return s.session(ctx, tx, owner, r.Session)
+	case "session_get":
+		sess, err := loadSession(ctx, tx, owner, r.SessionGet.SessionRef)
+		out.Session = sess
+		return out, err
 	case "get":
 		e, err := one(ctx, tx, "SELECT "+record+" FROM cully_entries e WHERE owner_subject=$1 AND id=$2::uuid", owner, r.ID.EntryID)
 		out.Entry = e
@@ -95,6 +104,30 @@ func (s *Store) execute(ctx context.Context, tx pgx.Tx, owner string, r memory.R
 		return out, err
 	case "update":
 		v := r.Update
+		// A task entry linked to a session keeps its session's scope.
+		// Sessions reject section changes, so a linked task cannot move
+		// to another section through an update either.
+		if v.Section != nil {
+			// Serialize with session link/unlink, which holds the same lock.
+			var taskSession *string
+			err := tx.QueryRow(ctx, `SELECT session_ref FROM cully_entries WHERE owner_subject=$1 AND id=$2::uuid AND entry_type='task'`, owner, v.EntryID).Scan(&taskSession)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return out, err
+			}
+			if taskSession != nil {
+				if err := lockSession(ctx, tx, owner, *taskSession); err != nil {
+					return out, err
+				}
+			}
+			var linked string
+			err = tx.QueryRow(ctx, `SELECT s.section FROM cully_sessions s WHERE s.owner_subject=$1 AND s.task_id=$2::uuid`, owner, v.EntryID).Scan(&linked)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return out, err
+			}
+			if err == nil && linked != *v.Section {
+				return out, fmt.Errorf("%w: linked task section cannot change", memory.ErrInvalid)
+			}
+		}
 		args := []any{owner, v.EntryID}
 		assignments := []string{}
 		add := func(field string, value any, cast string) {
@@ -191,4 +224,80 @@ func rows(ctx context.Context, tx pgx.Tx, sql string, args ...any) (memory.Resul
 		out.Entries = append(out.Entries, *e)
 	}
 	return out, rs.Err()
+}
+
+const sessionRecord = "to_jsonb(s) - 'owner_subject' || jsonb_build_object('task', t.summary)"
+
+func loadSession(ctx context.Context, tx pgx.Tx, owner, ref string) (*memory.Session, error) {
+	var data []byte
+	err := tx.QueryRow(ctx, "SELECT "+sessionRecord+" FROM cully_sessions s LEFT JOIN cully_entries t ON t.id=s.task_id AND t.owner_subject=s.owner_subject WHERE s.owner_subject=$1 AND s.session_ref=$2", owner, ref).Scan(&data)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var sess memory.Session
+	if err = json.Unmarshal(data, &sess); err != nil {
+		return nil, err
+	}
+	sess.StartedAt, sess.LastSeenAt = sess.StartedAt.In(memory.IST), sess.LastSeenAt.In(memory.IST)
+	return &sess, nil
+}
+
+// lockSession serializes writers of one session and the task entry it links.
+func lockSession(ctx context.Context, tx pgx.Tx, owner, sessionRef string) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, hashtextextended($2, 0)))`, owner, sessionRef)
+	return err
+}
+
+// session upserts one session. A new task name creates a task entry and links
+// it; the same task name again leaves the existing entry in place. The
+// advisory lock serializes concurrent callers for one session so two new task
+// names cannot both insert and leave an orphan behind.
+func (s *Store) session(ctx context.Context, tx pgx.Tx, owner string, v *memory.SessionInput) (memory.Result, error) {
+	out := memory.Result{}
+	if err := lockSession(ctx, tx, owner, v.SessionRef); err != nil {
+		return out, err
+	}
+	var existingSection string
+	err := tx.QueryRow(ctx, "SELECT section FROM cully_sessions WHERE owner_subject=$1 AND session_ref=$2", owner, v.SessionRef).Scan(&existingSection)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return out, err
+	}
+	if err == nil && existingSection != v.Section {
+		return out, fmt.Errorf("%w: session section cannot change", memory.ErrInvalid)
+	}
+	var taskID *string
+	if v.Task != nil && *v.Task != "" {
+		// Compare with the session's latest task record, not the current link,
+		// so repeating a name after clear_task relinks it instead of
+		// inserting a duplicate.
+		var latestID, latest *string
+		err = tx.QueryRow(ctx, "SELECT id::text, summary FROM cully_entries WHERE owner_subject=$1 AND session_ref=$2 AND entry_type='task' ORDER BY created_at DESC, id DESC LIMIT 1", owner, v.SessionRef).Scan(&latestID, &latest)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return out, err
+		}
+		if latest != nil && *latest == *v.Task {
+			taskID = latestID
+		} else {
+			e, err := one(ctx, tx, `INSERT INTO cully_entries AS e (id,owner_subject,section,project_url,session_ref,entry_type,summary,assistant,tags,occurred_at) VALUES ($1::uuid,$2,$3,$4,$5,'task',$6,$7,'{}',now()) RETURNING `+record, uuid.NewString(), owner, v.Section, v.ProjectURL, v.SessionRef, *v.Task, v.Assistant)
+			if err != nil {
+				return out, err
+			}
+			out.Entry, taskID = e, &e.ID
+		}
+	}
+	// ClearTask unlinks the session's task while keeping the task record.
+	// An omitted task preserves the current link; only an explicit clear
+	// nulls it.
+	clearTask := v.ClearTask != nil && *v.ClearTask
+	_, err = tx.Exec(ctx, `INSERT INTO cully_sessions AS s (owner_subject,session_ref,section,project_url,assistant,branch,task_id) VALUES ($1,$2,$3,$4,$5,$6,$7::uuid)
+ON CONFLICT (owner_subject,session_ref) DO UPDATE SET project_url=COALESCE(EXCLUDED.project_url,s.project_url), branch=COALESCE(EXCLUDED.branch,s.branch), task_id=CASE WHEN $8::boolean THEN NULL ELSE COALESCE(EXCLUDED.task_id,s.task_id) END, assistant=EXCLUDED.assistant, last_seen_at=now()`,
+		owner, v.SessionRef, v.Section, v.ProjectURL, v.Assistant, v.Branch, taskID, clearTask)
+	if err != nil {
+		return out, err
+	}
+	out.Session, err = loadSession(ctx, tx, owner, v.SessionRef)
+	return out, err
 }

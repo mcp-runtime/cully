@@ -1,0 +1,30 @@
+Replay · Claude Code · demo:main · 2026-10-08 10:31 · 19m
+                                                                   ✕           ✕          ⚠                       
+10:31 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━●──────────── 10:50
+  10:31  Claude Code started                                             │ FILE ACTIVITY (3)                            
+  10:31  Read     internal/auth/resource.go                              │ internal/auth/                               
+  10:34  Edited   internal/auth/resource.go                              │   ~ resource.go ████ ×4 ▲                    
+  10:34  Edited   internal/auth/resource.go                              │   + resource_test.go                         
+  10:35  Created  internal/auth/resource_test.go                         │ old/                                         
+  10:42  Ran      go test  ✕ failed                                      │   − helper.go                                
+  10:43  Edited   internal/auth/resource.go                              │                                              
+  10:44  Ran      go test  ✕ failed                                      │                                              
+  10:45  Edited   internal/auth/resource.go                              │                                              
+  10:46  Ran      go test  ✕ failed                                      │                                              
+  10:46  Cully noticed a loop: the same command failed 3 times           │                                              
+  10:47  Deleted  old/helper.go                                          │                                              
+▸ 10:48  Ran      go test  ✓ passed                                      │                                              
+                                                                         │                                              
+                                                                         │                                              
+                                                                         │                                              
+                                                                         │                                              
+                                                                         │                                              
+                                                                         │                                              
+                                                                         │                                              
+                                                                         │                                              
+                                                                         │                                              
+                                                                         │                                              
+                                                                         │                                              
+                                                                         │                                              
+files 3 · checks 1 passed / 3 failed · loops 1 · elapsed 17m / 19m · paused 1x
+space pause · ←/→ step · ↑/↓ speed · f files · / filter · q quit

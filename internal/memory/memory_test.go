@@ -2,6 +2,7 @@ package memory
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -68,5 +69,89 @@ func TestUpdateClearingAndLimits(t *testing.T) {
 	missing := Request{Operation: "search", Search: &SearchInput{}}
 	if !errors.Is(missing.Validate(), ErrInvalid) {
 		t.Fatal("search without text accepted")
+	}
+}
+
+func TestSessionValidation(t *testing.T) {
+	ref := "claude-dd4aac2e2202d45c"
+	task := "Oauth validation"
+	good := func() Request {
+		return Request{Operation: "session", Session: &SessionInput{SessionRef: ref, Assistant: "Claude", Section: "company", Task: &task}}
+	}
+	r := good()
+	if err := r.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if r.Session.Assistant != "claude" {
+		t.Fatal("assistant not normalized")
+	}
+	long := strings.Repeat("x", 61)
+	exact := strings.Repeat("y", 60)
+	secret := "api_key=supersecretvalue"
+	cases := map[string]func(*Request){
+		"missing ref":     func(r *Request) { r.Session.SessionRef = "" },
+		"native id":       func(r *Request) { r.Session.SessionRef = "native-session-id" },
+		"section":         func(r *Request) { r.Session.Section = "" },
+		"assistant":       func(r *Request) { r.Session.Assistant = "bot" },
+		"long task":       func(r *Request) { r.Session.Task = &long },
+		"credential task": func(r *Request) { r.Session.Task = &secret },
+		"mismatch":        func(r *Request) { r.Operation = "session_get" },
+	}
+	for name, change := range cases {
+		t.Run(name, func(t *testing.T) {
+			r := good()
+			change(&r)
+			if !errors.Is(r.Validate(), ErrInvalid) {
+				t.Fatal("invalid session accepted")
+			}
+		})
+	}
+	get := Request{Operation: "session_get", SessionGet: &SessionRefInput{SessionRef: ref}}
+	if err := get.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	capped := good()
+	capped.Session.Task = &exact
+	if err := capped.Validate(); err != nil {
+		t.Fatalf("60-rune task rejected: %v", err)
+	}
+	log := Request{Operation: "log", Log: &LogInput{Summary: "Oauth validation", Assistant: "claude", Section: "company", EntryType: "task"}}
+	if err := log.Validate(); err == nil || !strings.Contains(err.Error(), "cully_session") {
+		t.Fatalf("task via cully_log must point at cully_session: %v", err)
+	}
+}
+
+func TestSessionTaskClearValidation(t *testing.T) {
+	ref := "claude-dd4aac2e2202d45c"
+	task := "Oauth validation"
+	empty := ""
+	clear := true
+	good := func() Request {
+		return Request{Operation: "session", Session: &SessionInput{SessionRef: ref, Assistant: "claude", Section: "company"}}
+	}
+	// Omitted task preserves the link.
+	omitted := good()
+	if err := omitted.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	// Explicit clear without a task is valid.
+	c := good()
+	c.Session.ClearTask = &clear
+	if err := c.Validate(); err != nil {
+		t.Fatalf("clear_task rejected: %v", err)
+	}
+	// Set and clear together are rejected.
+	both := good()
+	both.Session.Task = &task
+	both.Session.ClearTask = &clear
+	if !errors.Is(both.Validate(), ErrInvalid) {
+		t.Fatal("task with clear_task accepted")
+	}
+	// Blank task with clear unlinks rather than conflicting.
+	blank := good()
+	blank.Session.Task = &empty
+	blank.Session.ClearTask = &clear
+	if err := blank.Validate(); err != nil {
+		t.Fatalf("blank task with clear_task rejected: %v", err)
 	}
 }

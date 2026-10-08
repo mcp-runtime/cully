@@ -1,7 +1,7 @@
 version: v1
 servers:
     - name: cully
-      description: Your companion for better work and everyday life
+      description: Intelligence around your coding agents
       image: registry.mcpruntime.org/org/cully-mcp/cully
       imageTag: dev
       route: /cully/mcp
@@ -43,6 +43,18 @@ servers:
           description: cully_recent tool
           requiredTrust: low
           sideEffect: read
+        - name: cully_context
+          description: cully_context tool
+          requiredTrust: low
+          sideEffect: read
+        - name: cully_session
+          description: cully_session tool
+          requiredTrust: medium
+          sideEffect: write
+        - name: cully_session_get
+          description: cully_session_get tool
+          requiredTrust: low
+          sideEffect: read
         - name: cully_get
           description: cully_get tool
           requiredTrust: low
@@ -76,4 +88,4 @@ servers:
         idleTimeout: 1h
         upstreamTokenHeader: Authorization
       gateway:
-        enabled: false
+        enabled: true
