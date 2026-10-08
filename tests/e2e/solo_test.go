@@ -9,12 +9,13 @@ import (
 
 	"github.com/mcp-runtime/cully/internal/memory"
 	cullymcp "github.com/mcp-runtime/cully/internal/transport/mcp"
+	"github.com/mcp-runtime/cully/internal/workspace"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// TestContainerStack crosses the live MCP, data API, PostgreSQL and Mem0 services.
+// TestSolo crosses the live MCP, data API, PostgreSQL and Mem0 services.
 // The setup workflow supplies a disposable stack; local unit runs skip it.
-func TestContainerStack(t *testing.T) {
+func TestSolo(t *testing.T) {
 	endpoint := os.Getenv("CULLY_E2E_MCP_URL")
 	if endpoint == "" {
 		t.Skip("CULLY_E2E_MCP_URL not set")
@@ -30,6 +31,13 @@ func TestContainerStack(t *testing.T) {
 	tools, err := session.ListTools(ctx, nil)
 	if err != nil || len(tools.Tools) == 0 {
 		t.Fatalf("list tools: %v, %+v", err, tools)
+	}
+	hasWorkspace := false
+	for _, tool := range tools.Tools {
+		hasWorkspace = hasWorkspace || tool.Name == "cully_workspace_write"
+	}
+	if !hasWorkspace && os.Getenv("CULLY_E2E_PUBLISHED_CLI") != "true" {
+		t.Fatal("current stack did not discover the Team tool needed for the Solo isolation check")
 	}
 	call := func(name string, input any) memory.Result {
 		t.Helper()
@@ -52,6 +60,45 @@ func TestContainerStack(t *testing.T) {
 		return result
 	}
 	projectURL := "https://github.com/mcp-runtime/cully"
+	// Solo sessions preserve a task when omitted, unlink it explicitly, and
+	// reuse the same owned task record when it is linked again.
+	ref, taskName := "solo-e2e-0123456789abcdef", "Verify Solo memory"
+	start := call("cully_session", memory.SessionInput{SessionRef: ref, Assistant: "codex", Section: "personal", ProjectURL: &projectURL, Task: &taskName}).Session
+	if start == nil || start.TaskID == nil || start.Task == nil || *start.Task != taskName {
+		t.Fatal("Solo session did not link its task")
+	}
+	taskID := *start.TaskID
+	preserved := call("cully_session", memory.SessionInput{SessionRef: ref, Assistant: "codex", Section: "personal"}).Session
+	if preserved == nil || preserved.TaskID == nil || *preserved.TaskID != taskID {
+		t.Fatal("omitting the task lost its link")
+	}
+	clear := true
+	unlinked := call("cully_session", memory.SessionInput{SessionRef: ref, Assistant: "codex", Section: "personal", ClearTask: &clear}).Session
+	if unlinked == nil || unlinked.TaskID != nil {
+		t.Fatal("explicit task clear did not unlink")
+	}
+	relinked := call("cully_session", memory.SessionInput{SessionRef: ref, Assistant: "codex", Section: "personal", Task: &taskName}).Session
+	if relinked == nil || relinked.TaskID == nil || *relinked.TaskID != taskID {
+		t.Fatal("relinking created a duplicate task")
+	}
+	if got := call("cully_session_get", memory.SessionRefInput{SessionRef: ref}).Session; got == nil || got.TaskID == nil || *got.TaskID != taskID {
+		t.Fatal("session task did not survive a separate read")
+	}
+	if !call("cully_delete", memory.IDInput{EntryID: taskID}).Deleted {
+		t.Fatal("could not delete the Solo task")
+	}
+	if got := call("cully_session_get", memory.SessionRefInput{SessionRef: ref}).Session; got == nil || got.TaskID != nil {
+		t.Fatal("deleted task remained linked")
+	}
+	// A local single-owner connection cannot create shared Team state.
+	// Releases before Team support have no workspace tool; published-CLI mode
+	// still exercises their supported Solo lifecycle.
+	if hasWorkspace {
+		denied, err := session.CallTool(ctx, &sdk.CallToolParams{Name: "cully_workspace_write", Arguments: workspace.Input{Action: "team_create", Name: "Must require OAuth"}})
+		if err != nil || !denied.IsError {
+			t.Fatal("Solo connection gained Team access")
+		}
+	}
 	logged := call("cully_log", memory.LogInput{Summary: "Disposable container end-to-end check", Assistant: "other", Section: "personal", ProjectURL: &projectURL}).Entry
 	if logged == nil || logged.ID == "" {
 		t.Fatal("MCP write did not reach PostgreSQL")

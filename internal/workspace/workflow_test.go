@@ -156,3 +156,39 @@ func TestIssuerAndLinks(t *testing.T) {
 		}
 	}
 }
+
+func TestDispatchPreservesAccessAndAuditBoundaries(t *testing.T) {
+	team, p, task, now := fixture(t)
+	read := Input{Action: "task_get", TeamID: team.ID, ProjectID: p.ID, TaskID: task.ID}
+	out, event, err := team.Apply("viewer", read, now)
+	if err != nil || event != nil || out.Task.ID != task.ID {
+		t.Fatalf("authorized read must not create an audit mutation: %v %+v", err, event)
+	}
+	unknown := read
+	unknown.Action = "task_typo"
+	if _, event, err := team.Apply("lead", unknown, now); !errors.Is(err, ErrInvalid) || event != nil || task.Version != 1 {
+		t.Fatal("unknown action dispatched or changed task state")
+	}
+	// Team admins can manage grants but cannot read project content without a grant.
+	delete(p.Members, "lead")
+	p.Members["next"] = "maintainer"
+	if _, _, err := team.Apply("lead", read, now); !errors.Is(err, ErrForbidden) {
+		t.Fatal("team admin bypassed project content membership")
+	}
+	member := Input{Action: "project_member", TeamID: team.ID, ProjectID: p.ID, Principal: "dev", Role: "viewer"}
+	_, event, err = team.Apply("lead", member, now)
+	if err != nil || event == nil || event.ProjectID != p.ID || event.TargetID != "dev" || p.Members["dev"] != "viewer" {
+		t.Fatal("membership management lost its authorized audit target")
+	}
+	if _, _, err := team.Apply("dev", Input{Action: "task_claim", TeamID: team.ID, ProjectID: p.ID, TaskID: task.ID, Version: 1, Agent: "codex"}, now); !errors.Is(err, ErrForbidden) {
+		t.Fatal("viewer gained mutation access")
+	}
+	for _, input := range []Input{
+		{Action: "team_member", TeamID: team.ID, Principal: "lead", Role: "remove"},
+		{Action: "project_member", TeamID: team.ID, ProjectID: p.ID, Principal: "next", Role: "remove"},
+	} {
+		if _, event, err := team.Apply("lead", input, now); !errors.Is(err, ErrInvalid) || event != nil {
+			t.Fatalf("removed the last responsible role: %s %v", input.Action, err)
+		}
+	}
+}

@@ -25,7 +25,8 @@ Separate workflows provide independent checks and badge targets:
 | Lint | Go formatting and vet, shell syntax, Compose configuration |
 | Unit Test | Go and deployment-controller unit tests |
 | Integration Test | PostgreSQL-backed owner isolation and OAuth MCP tests |
-| E2E Test | Disposable MCP, data API and PostgreSQL containers; live tool write and read |
+| E2E Test — Solo | Install/setup/uninstall, live private memory and Mem0 recall, session task linking; local connections cannot create a Team workspace |
+| E2E Test — Team | Production CLI/MCP/data binaries, signed OAuth via JWKS, disposable PostgreSQL, cross-agent handoff, review gates, lesson sharing/withdrawal, concurrent claims and revocation |
 | Trivy | MCP, data, website and docs container vulnerability reports |
 | CodeQL | Go, Python and JavaScript/TypeScript analysis |
 
@@ -33,4 +34,13 @@ These run on pushes and pull requests. The website and docs retain separate buil
 
 Build server images with `docker build -t cully-mcp .` and `docker build -f Dockerfile.data-api -t cully-data .`. GoReleaser builds independent CLI, MCP and data archives from a Cully release tag.
 
-Keep domain validation in `internal/memory`, SQL in `internal/store/postgres`, protocol handlers in `internal/transport`, and initialization in `internal/app`. Follow the [architecture](architecture.md) and [roadmap](roadmap.md) when extending session capture or synchronization.
+Run Team E2E locally against a disposable PostgreSQL database:
+
+```sh
+CULLY_E2E_TEAM_DATABASE_URL=postgresql://test:test@localhost:5432/cully_test \
+  go test ./tests/e2e -run '^TestTeam$' -race -count=1 -v
+```
+
+The test builds the current CLI, MCP and data binaries with the race detector, applies migrations in an isolated schema, starts loopback services and a temporary JWKS provider, and removes its schema and processes on completion. Solo's complete installation flow runs with `bash tests/e2e/setup.sh` on an isolated CI runner; `TestSolo` targets the local stack through `CULLY_E2E_MCP_URL`. Ordinary Go test runs skip each mode unless its environment variable is set. The published-CLI workflow option applies to Solo; Team always exercises the current checkout.
+
+Keep private-memory validation in `internal/memory`, Team policies in `internal/workspace`, SQL in `internal/store/postgres`, protocol handlers in `internal/transport`, and initialization in `internal/app`. Workspace access, projections, task lifecycle, evidence/review and learning/playbook handlers have separate responsibilities; a shared operation table defines routing, authorization scope and read/write status. Follow the [architecture](architecture.md) and [roadmap](roadmap.md) when extending session capture or synchronization.

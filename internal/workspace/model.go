@@ -6,12 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"net/url"
-	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 var ErrInvalid = errors.New("invalid workspace input")
@@ -23,35 +18,6 @@ var ErrConflict = errors.New("workspace version or claim conflict")
 func Principal(issuer, subject string) string {
 	sum := sha256.Sum256([]byte(issuer + "\x00" + subject))
 	return "oauth-" + hex.EncodeToString(sum[:])
-}
-
-type Input struct {
-	Action       string     `json:"action"`
-	TeamID       string     `json:"team_id,omitempty"`
-	ProjectID    string     `json:"project_id,omitempty"`
-	TaskID       string     `json:"task_id,omitempty"`
-	LearningID   string     `json:"learning_id,omitempty"`
-	Version      int        `json:"version,omitempty"`
-	Name         string     `json:"name,omitempty"`
-	Principal    string     `json:"principal,omitempty"`
-	Role         string     `json:"role,omitempty"`
-	Repository   string     `json:"repository,omitempty"`
-	Criteria     []string   `json:"criteria,omitempty"`
-	Dependencies []string   `json:"dependencies,omitempty"`
-	State        string     `json:"state,omitempty"`
-	Agent        string     `json:"agent,omitempty"`
-	SessionRef   string     `json:"session_ref,omitempty"`
-	Branch       string     `json:"branch,omitempty"`
-	Checkpoint   string     `json:"checkpoint,omitempty"`
-	NextStep     string     `json:"next_step,omitempty"`
-	Revision     string     `json:"revision,omitempty"`
-	Artifact     string     `json:"artifact,omitempty"`
-	Evidence     []Evidence `json:"evidence,omitempty"`
-	Lesson       string     `json:"lesson,omitempty"`
-	AppliesWhen  string     `json:"applies_when,omitempty"`
-	Limitations  string     `json:"limitations,omitempty"`
-	Steps        []string   `json:"steps,omitempty"`
-	Query        string     `json:"query,omitempty"`
 }
 
 type Evidence struct {
@@ -152,63 +118,4 @@ type Result struct {
 	Learnings []Learning `json:"learnings,omitempty"`
 	Playbooks []Playbook `json:"playbooks,omitempty"`
 	Stale     bool       `json:"stale,omitempty"`
-}
-
-func (v Input) Write() bool {
-	switch v.Action {
-	case "whoami", "projects", "board", "inbox", "task_get", "lessons":
-		return false
-	default:
-		return true
-	}
-}
-
-func (v Input) Validate() error {
-	switch v.Action {
-	case "whoami":
-		return nil
-	case "team_create", "team_member", "project_create", "project_member", "projects", "board", "inbox", "task_get", "task_create", "task_claim", "task_checkpoint", "task_release", "task_state", "task_submit", "task_approve", "learning_draft", "learning_publish", "learning_unshare", "learning_edit", "learning_delete", "playbook_adopt", "lessons":
-	default:
-		return fmt.Errorf("%w: unknown action", ErrInvalid)
-	}
-	for _, s := range []string{v.TeamID, v.ProjectID, v.TaskID, v.LearningID} {
-		if s != "" {
-			if _, err := uuid.Parse(s); err != nil {
-				return fmt.Errorf("%w: IDs must be UUIDs", ErrInvalid)
-			}
-		}
-	}
-	if v.Action != "team_create" && v.TeamID == "" {
-		return fmt.Errorf("%w: team_id required", ErrInvalid)
-	}
-	if v.Version < 0 {
-		return ErrInvalid
-	}
-	if len(v.Criteria) > 20 || len(v.Dependencies) > 20 || len(v.Evidence) > 40 || len(v.Steps) > 20 {
-		return ErrInvalid
-	}
-	texts := []string{v.Name, v.Principal, v.Role, v.Repository, v.State, v.Agent, v.SessionRef, v.Branch, v.Checkpoint, v.NextStep, v.Revision, v.Artifact, v.Lesson, v.AppliesWhen, v.Limitations, v.Query}
-	texts = append(texts, v.Criteria...)
-	texts = append(texts, v.Steps...)
-	for _, e := range v.Evidence {
-		texts = append(texts, e.Check, e.Status, e.Revision, e.Source)
-	}
-	for _, s := range texts {
-		if len(s) > 8000 || strings.ContainsRune(s, '\x00') {
-			return ErrInvalid
-		}
-	}
-	if len(v.Principal) > 512 {
-		return ErrInvalid
-	}
-	for _, link := range []string{v.Repository, v.Artifact} {
-		if link == "" {
-			continue
-		}
-		u, err := url.Parse(link)
-		if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
-			return fmt.Errorf("%w: links require HTTPS without credentials, query or fragment", ErrInvalid)
-		}
-	}
-	return nil
 }

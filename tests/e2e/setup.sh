@@ -80,7 +80,7 @@ test ! -f "$stack_dir/AGENTS.md"
 "$cli" suggestions
 
 cd "$repo_root"
-go test ./tests/e2e -run '^TestContainerStack$' -count=1 -v
+go test ./tests/e2e -run '^TestSolo$' -race -count=1 -v
 
 cd "$HOME"
 "$cli" setup "${setup_flags[@]}" --prepare
