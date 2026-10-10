@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Centralize error/global types with one-time initialisation instead of repeated error.New() calls in website.
+
 ## 0.11.3
 
 - Refuse to start `cully-data serve` until schema version 6 is applied (sessions/tasks and Team workspaces), instead of accepting a database that only reached version 3. Migration tests assert the required version stays current.
