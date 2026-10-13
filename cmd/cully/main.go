@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -48,6 +49,10 @@ Docs: https://docs.cully.net
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
+		var exit *cully.AgentExitError
+		if errors.As(err, &exit) {
+			os.Exit(exit.ExitCode())
+		}
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -89,9 +94,9 @@ func run(args []string) error {
 		if len(args) < 2 {
 			return fmt.Errorf("usage: cully run AGENT [ARGS...]")
 		}
-		return cully.RunPane(args[1], args[2:], os.Stdin, os.Stdout)
+		return cully.RunAgent(args[1], args[2:], os.Stdin, os.Stdout, os.Stderr)
 	case "claude", "codex", "cursor":
-		return cully.RunPane(args[0], args[1:], os.Stdin, os.Stdout)
+		return cully.RunAgent(args[0], args[1:], os.Stdin, os.Stdout, os.Stderr)
 	case "timeline":
 		return cully.RunTimeline(os.Stdout, args[1:])
 	case "replay":

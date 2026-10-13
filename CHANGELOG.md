@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Forward agent utility commands and redirected streams without requiring a panel or changing arguments, diagnostics or exit status; keep the panel for interactive coding sessions.
+- Resize the Cully panel by dragging its divider, keeping the chosen height across refreshes and terminal resizes. Warp offers an explicit resize mode with `Ctrl+\` so normal host scrolling remains available.
+
 - Centralize website limits and validation errors while preserving optional-photo submissions and rate limiting. Build LinkedIn profile imports from a fixed HTTPS origin and reject unsafe profile paths and lookalike hosts.
 
 ## 0.11.3

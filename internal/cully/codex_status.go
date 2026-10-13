@@ -793,13 +793,13 @@ func paneTop(rows, statusRows int) int {
 	return rows - min(max(0, statusRows)+1, budget)
 }
 
-func panelLines(cols, height int, content []string, hud string) []string {
+func panelLines(cols, height int, content []string, hud string, hints ...string) []string {
 	lines := make([]string, max(0, height))
 	if height <= 0 {
 		return lines
 	}
 	width := max(0, cols-1)
-	lines[0] = hudRule(width, hud)
+	lines[0] = hudRule(width, hud, hints...)
 	capacity := height - 1
 	if len(content) > capacity {
 		// Keep advice visible on shorter terminals. Drop secondary instruments

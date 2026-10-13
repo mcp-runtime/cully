@@ -52,12 +52,12 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 	startup := "\x1b[?1049h\x1b[?25l"
 	mouseTracking := !profile.isWarp()
 	if mouseTracking {
-		startup += "\x1b[?1000h\x1b[?1006h"
+		startup += "\x1b[?1000h\x1b[?1002h\x1b[?1006h"
 	}
 	if _, err := io.WriteString(output, startup); err != nil {
 		return err
 	}
-	defer io.WriteString(output, "\x1b[?1000l\x1b[?1006l\x1b[0m\x1b[?25h\x1b[?1049l") //nolint:errcheck
+	defer io.WriteString(output, "\x1b[?1000l\x1b[?1002l\x1b[?1006l\x1b[0m\x1b[?25h\x1b[?1049l") //nolint:errcheck
 	reviewContext, cancelReviews := context.WithCancel(context.Background())
 	defer cancelReviews()
 
@@ -104,10 +104,16 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 	stats := readToolStats(session)
 	view.Loops, _ = sessionLoops(currentDir(), session)
 	advice := combinedAdvice(session, stats, view)
-	panelBudget := func() int { return rows - paneTop(rows, rows) }
+	var divider paneDivider
+	panelBudget := func() int {
+		if divider.Manual {
+			return max(0, rows-divider.top(rows, 0))
+		}
+		return rows - paneTop(rows, rows)
+	}
 	statusRows := func() []string { return compactSessionStatusRows(cols, panelBudget(), advice, stats, view) }
 	content := statusRows()
-	top := paneTop(rows, len(content))
+	top := divider.top(rows, len(content))
 	child, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: uint16(top), Cols: uint16(cols)})
 	if err != nil {
 		return fmt.Errorf("start %s: %w", agent.Name, err)
@@ -207,6 +213,15 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 	var keyFeed panelInput
 	lastInput := time.Now()
 	var drawer advisorDrawer
+	resizeMode := false
+	resizeChild := func() {
+		nextTop := divider.top(rows, len(content))
+		if nextTop != top || cols != emulator.Width() {
+			top = nextTop
+			emulator.Resize(cols, top)
+			_ = pty.Setsize(child, &pty.Winsize{Rows: uint16(top), Cols: uint16(cols)})
+		}
+	}
 	var cancelPreview context.CancelFunc
 	defer func() {
 		if cancelPreview != nil {
@@ -216,7 +231,7 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 	// Warp keeps host scroll mode while mouse tracking is off. Toggle tracking
 	// with the advisor drawer so clicks still work once the user opens it.
 	syncMouseTracking := func() {
-		want := !profile.isWarp() || drawer.Open
+		want := !profile.isWarp() || drawer.Open || resizeMode
 		if mouseTracking == want {
 			return
 		}
@@ -233,7 +248,14 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 		if drawer.Open {
 			return drawer.render(cols, rows, stats, view)
 		}
-		return renderTerminalPane(emulator, cols, rows, content, agent.NativeFooter, paneHUD(cols, stats, view, time.Now()))
+		hud := paneHUD(cols, stats, view, time.Now())
+		hint := " drag ↕ · Ctrl+] advisor "
+		if profile.isWarp() && !resizeMode {
+			hint = " Ctrl+\\ resize · Ctrl+] advisor "
+		} else if resizeMode {
+			hint = " drag ↕ · Esc ends resize "
+		}
+		return renderTerminalPane(emulator, cols, rows, content, agent.NativeFooter, hud, hint)
 	}
 	preview := func() {
 		if drawer.Busy || drawer.Details || len(drawer.Items) == 0 {
@@ -292,7 +314,25 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 	}
 	handleKeys := func(keys []panelKey) {
 		for _, key := range keys {
+			if key.Action == "resize" {
+				if drawer.Open {
+					drawer.close()
+				}
+				resizeMode = !resizeMode
+				divider.Dragging = false
+				syncMouseTracking()
+				dirty = true
+				continue
+			}
+			if resizeMode && key.Action == "escape" && !drawer.Open {
+				resizeMode = false
+				divider.Dragging = false
+				syncMouseTracking()
+				dirty = true
+				continue
+			}
 			if key.Action == "focus" {
+				divider.Dragging = false
 				if drawer.Open {
 					if cancelPreview != nil {
 						cancelPreview()
@@ -307,6 +347,16 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 			}
 			if key.Mouse != nil {
 				mouse := key.Mouse
+				if !drawer.Open && divider.handle(mouse, rows, top) {
+					content = statusRows()
+					resizeChild()
+					dirty = true
+					continue
+				}
+				if !drawer.Open && mouse.Y <= top {
+					emulator.SendMouse(mouse.event())
+					continue
+				}
 				if !mouse.Release {
 					if !drawer.Open && mouse.Button == 0 && mouse.Y > top {
 						drawer.open(advice)
@@ -440,9 +490,8 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 			if width, height, sizeErr := term.GetSize(int(output.Fd())); sizeErr == nil && width > 0 && height > 0 {
 				cols, rows = width, height
 				content = statusRows()
-				top = paneTop(rows, len(content))
-				emulator.Resize(cols, top)
-				_ = pty.Setsize(child, &pty.Winsize{Rows: uint16(top), Cols: uint16(cols)})
+				divider.Dragging = false
+				resizeChild()
 				dirty = true
 			}
 		case sig := <-stop:
@@ -497,7 +546,7 @@ func RunPane(agentName string, args []string, input, output *os.File) error {
 			}
 			// Expand for new content, but do not keep reflowing Codex when
 			// temporary advice clears. A physical resize recalculates both areas.
-			if nextTop := paneTop(rows, len(content)); nextTop < top {
+			if nextTop := divider.top(rows, len(content)); !divider.Manual && nextTop < top {
 				top = nextTop
 				emulator.Resize(cols, top)
 				_ = pty.Setsize(child, &pty.Winsize{Rows: uint16(top), Cols: uint16(cols)})
@@ -522,16 +571,16 @@ func currentDir() string {
 }
 
 // writeMouseTracking turns host mouse reporting on or off. Leaving it on in
-// Warp consumes scroll mode; the pane enables it only while the advisor is open.
+// Warp consumes scroll mode; enable it only for the advisor or divider resizing.
 func writeMouseTracking(w io.Writer, on bool) {
 	if on {
-		_, _ = io.WriteString(w, "\x1b[?1000h\x1b[?1006h")
+		_, _ = io.WriteString(w, "\x1b[?1000h\x1b[?1002h\x1b[?1006h")
 		return
 	}
-	_, _ = io.WriteString(w, "\x1b[?1000l\x1b[?1006l")
+	_, _ = io.WriteString(w, "\x1b[?1000l\x1b[?1002l\x1b[?1006l")
 }
 
-func renderTerminalPane(emulator *vt.Emulator, cols, rows int, content []string, nativeFooter bool, hud string) string {
+func renderTerminalPane(emulator *vt.Emulator, cols, rows int, content []string, nativeFooter bool, hud string, hints ...string) string {
 	var out strings.Builder
 	limit := max(0, cols-1) // avoid triggering automatic terminal wrap
 	top := min(emulator.Height(), rows)
@@ -556,7 +605,7 @@ func renderTerminalPane(emulator *vt.Emulator, cols, rows int, content []string,
 		out.WriteString(line.Render())
 	}
 	if top < rows {
-		panel := panelLines(cols, rows-top, content, hud)
+		panel := panelLines(cols, rows-top, content, hud, hints...)
 		for i, line := range panel {
 			fmt.Fprintf(&out, "\x1b[%d;1H\x1b[0m\x1b[2K%s\x1b[0m", top+i+1, line)
 		}

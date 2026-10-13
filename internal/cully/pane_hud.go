@@ -56,14 +56,17 @@ func paneHUD(cols int, stats toolStats, view sessionView, now time.Time) string 
 }
 
 // hudRule draws the HUD inside a horizontal rule of the given width.
-func hudRule(width int, hud string) string {
+func hudRule(width int, hud string, hints ...string) string {
 	if hud == "" || width < 24 {
 		return dim + strings.Repeat("─", max(0, width)) + rst
 	}
-	const hint = " Ctrl+] advisor "
-	body := ansi.Truncate(hud, max(1, width-len(hint)-6), "…")
+	hint := " Ctrl+] advisor "
+	if len(hints) > 0 {
+		hint = hints[0]
+	}
+	body := ansi.Truncate(hud, max(1, width-ansi.StringWidth(hint)-6), "…")
 	left := dim + "── " + rst + body + dim + " "
-	fill := width - ansi.StringWidth(ansi.Strip(left)) - len(hint) - 2
+	fill := width - ansi.StringWidth(ansi.Strip(left)) - ansi.StringWidth(hint) - 2
 	if fill < 2 {
 		return left + dim + strings.Repeat("─", max(0, width-ansi.StringWidth(ansi.Strip(left)))) + rst
 	}

@@ -5,6 +5,8 @@ package cully
 import (
 	"bytes"
 	"fmt"
+
+	uv "github.com/charmbracelet/ultraviolet"
 )
 
 type panelKey struct {
@@ -58,6 +60,11 @@ func (p *panelInput) feed(data []byte, flush bool) []panelKey {
 			}
 			break
 		}
+		if p.pending[0] == 0x1c { // Ctrl+\ toggles divider dragging in Warp
+			keys = append(keys, panelKey{Data: []byte{0x1c}, Action: "resize"})
+			p.pending = p.pending[1:]
+			continue
+		}
 		if p.pending[0] == 0x1d { // Ctrl+], a single unambiguous terminal byte
 			keys = append(keys, panelKey{Data: []byte{0x1d}, Action: "focus"})
 			p.pending = p.pending[1:]
@@ -73,7 +80,7 @@ func (p *panelInput) feed(data []byte, flush bool) []panelKey {
 			continue
 		}
 		if p.pending[0] != 0x1b {
-			n := bytes.IndexAny(p.pending, "\x1b\x1d\r\n\t")
+			n := bytes.IndexAny(p.pending, "\x1b\x1c\x1d\r\n\t")
 			if n < 0 {
 				n = len(p.pending)
 			}
@@ -130,4 +137,38 @@ func (p *panelInput) feed(data []byte, flush bool) []panelKey {
 		}
 	}
 	return keys
+}
+
+func (m *panelMouse) event() uv.MouseEvent {
+	mouse := uv.Mouse{X: m.X - 1, Y: m.Y - 1}
+	button := m.Button & 3
+	switch {
+	case m.Button&128 != 0:
+		mouse.Button = uv.MouseBackward + uv.MouseButton(button)
+	case m.Button&64 != 0:
+		mouse.Button = uv.MouseWheelUp + uv.MouseButton(button)
+	case button == 3:
+		mouse.Button = uv.MouseNone
+	default:
+		mouse.Button = uv.MouseLeft + uv.MouseButton(button)
+	}
+	if m.Button&4 != 0 {
+		mouse.Mod |= uv.ModShift
+	}
+	if m.Button&8 != 0 {
+		mouse.Mod |= uv.ModAlt
+	}
+	if m.Button&16 != 0 {
+		mouse.Mod |= uv.ModCtrl
+	}
+	if m.Release {
+		return uv.MouseReleaseEvent(mouse)
+	}
+	if m.Button&32 != 0 {
+		return uv.MouseMotionEvent(mouse)
+	}
+	if m.Button&64 != 0 {
+		return uv.MouseWheelEvent(mouse)
+	}
+	return uv.MouseClickEvent(mouse)
 }

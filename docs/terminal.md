@@ -22,7 +22,19 @@ cully run AGENT  [ARGS...]     # any executable on your PATH
 
 An agent Cully does not know yet still runs in the terminal with the common instruments. Add a dedicated adapter later only if the agent offers more signals.
 
-Requirements: an interactive terminal at least 20 columns by 8 rows, macOS or Linux. Exiting the wrapper stops the agent's process group. It does not create a detached tmux session.
+Help, version, MCP management, login and other native utility commands run directly without opening the panel. Print/exec modes and piped or redirected streams work with their original arguments, stdin, stdout, stderr and exit status. For example:
+
+```sh
+cully codex mcp list
+cully codex mcp get cully
+cully codex exec --json "Review this change"
+cully claude --print "Explain this function"
+cully cursor mcp list
+```
+
+Cully forwards native errors too: a subcommand unsupported by the installed agent remains unsupported. Set `CULLY_NO_PANE=1` to run any command directly, including a future agent utility command. Codex's `--no-alt-screen` also runs directly to preserve its native terminal mode.
+
+Interactive panel requirements: a terminal at least 20 columns by 8 rows, macOS or Linux. Exiting the panel stops the agent's process group.
 
 ## The health bar
 
@@ -43,9 +55,13 @@ The first row under the agent is a one-line health bar. Every value is measured.
 
 ## The advisor panel
 
-Below the health bar, the panel shows session instruments and two prioritized advisor comments. Click anywhere in the panel, or press `Ctrl+]` or `F6`, to open the full advisor. Select with the mouse or Up and Down, preview with Enter, and press Tab for every instrument. See the [advisor](/advisor) for what it analyzes and how you apply a suggestion. In Warp, open the advisor with `Ctrl+]` or `F6` first: mouse tracking is deferred so Warp scroll mode is not consumed while you work.
+Below the health bar, the panel shows session instruments and two prioritized advisor comments. Click below the divider in the panel, or press `Ctrl+]` or `F6`, to open the full advisor. Select with the mouse or Up and Down, preview with Enter, and press Tab for every instrument. See the [advisor](/advisor) for what it analyzes and how you apply a suggestion. In Warp, open the advisor with `Ctrl+]` or `F6` first: mouse tracking is deferred so Warp scroll mode is not consumed while you work.
 
-The panel grows only as far as its content needs and always leaves the agent at least 12 rows on a normal screen (8 on a short one). Terminals shorter than 12 rows give the agent the whole screen.
+Drag the horizontal health bar between the agent and Cully up to expand the panel or down to shrink it, all the way to one divider row. The agent's terminal resizes with it. Cully keeps your chosen height for the rest of the launch, including advisor refreshes and window resizes; smaller windows clamp it to leave the agent usable.
+
+In Warp, press `Ctrl+\` to enable divider dragging, drag the bar, then press `Ctrl+\` again or Esc to restore normal host scrolling. Other terminals allow dragging immediately. Click below the divider to open the advisor.
+
+Before your first drag, the panel grows only as far as its content needs. It always leaves the agent at least 12 rows on a normal screen (8 on a short one). Terminals shorter than 12 rows give the agent the whole screen.
 
 ## What each agent supplies
 
