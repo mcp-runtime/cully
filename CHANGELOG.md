@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.12.0
+
 - Forward agent utility commands and redirected streams without requiring a panel or changing arguments, diagnostics or exit status; keep the panel for interactive coding sessions.
 - Resize the Cully panel by dragging its divider, keeping the chosen height across refreshes and terminal resizes. Warp offers an explicit resize mode with `Ctrl+\` so normal host scrolling remains available.
 
