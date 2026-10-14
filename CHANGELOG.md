@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add website handler allocation benchmarks using verified site fixtures and isolated successful submission and profile-import requests.
 ## 0.12.0
 
 - Forward agent utility commands and redirected streams without requiring a panel or changing arguments, diagnostics or exit status; keep the panel for interactive coding sessions.
