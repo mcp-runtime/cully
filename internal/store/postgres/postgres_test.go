@@ -82,16 +82,18 @@ func TestEndToEndMCPDatabase(t *testing.T) {
 	}
 	a := connect("owner-a", "tools:read tools:write")
 	b := connect("owner-b", "tools:read tools:write")
-	entry := call(a, "cully_log", memory.LogInput{Summary: "Port memory services to Go", Assistant: "codex", Section: "company"}).Entry
-	if entry == nil {
-		t.Fatal("missing source entry")
+	agentID := uuid.NewString()
+	entry := call(a, "cully_log", memory.LogInput{Summary: "Port memory services to Go", Assistant: "codex", Section: "company", AgentSessionID: &agentID}).Entry
+	if entry == nil || entry.AgentSessionID == nil || *entry.AgentSessionID != agentID {
+		t.Fatal("resumable agent session ID missing from saved entry")
 	}
 	id := memory.IDInput{EntryID: entry.ID}
 	if call(b, "cully_get", id).Entry != nil {
 		t.Fatal("cross-owner MCP read")
 	}
-	if len(call(a, "cully_search", memory.SearchInput{Query: "memory"}).Entries) != 1 {
-		t.Fatal("MCP search failed")
+	found := call(a, "cully_search", memory.SearchInput{Query: "memory"}).Entries
+	if len(found) != 1 || found[0].AgentSessionID == nil || *found[0].AgentSessionID != agentID {
+		t.Fatal("MCP search lost resumable agent session ID")
 	}
 	if len(call(b, "cully_search", memory.SearchInput{Query: "memory"}).Entries) != 0 {
 		t.Fatal("cross-owner MCP search")

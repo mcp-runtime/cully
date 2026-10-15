@@ -44,7 +44,7 @@ These can reduce repeated reading and material in the model’s input. They are 
 
 Open a project in your connected agent and work as usual. You do not need to mention Cully in every prompt. Its [hooks and skill](/session-optimization#what-happens-during-a-task) guide the agent during substantive work. On your first task, no prior notes may exist yet.
 
-After a useful change or decision, ask “What did you save with Cully for this task?” Look for a successful `cully_log` result. The hook prompts the agent to make that MCP call; it does not write a note itself, and routine replies are skipped. When the client supplies a session ID, the hook gives the agent an opaque `session_ref` to group notes from that session without saving its transcript. If MCP is unavailable, the agent should say that shared memory was not saved.
+After a useful change or decision, ask “What did you save with Cully for this task?” Look for a successful `cully_log` result. The hook prompts the agent to make that MCP call; it does not write a note itself, and routine replies are skipped. When the client supplies a session ID, the hook gives the agent an opaque `session_ref` to group notes and a native `agent_session_id` to reopen the coding agent's conversation. No transcript is saved. If MCP is unavailable, the agent should say that shared memory was not saved.
 
 After a successful write, PostgreSQL holds the source note. Mem0 indexes it in the background, so [text search may find a new note first](/mem0#what-to-expect). The [memory tools](/memory#find-and-change-notes) let you search or correct it explicitly.
 

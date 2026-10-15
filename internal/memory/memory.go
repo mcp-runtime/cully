@@ -22,24 +22,25 @@ var ErrConflict = errors.New("record version conflict")
 var IST = time.FixedZone("Asia/Kolkata", 19800)
 
 type Entry struct {
-	ID         string    `json:"id"`
-	Theme      string    `json:"theme"`
-	Section    string    `json:"section"`
-	ProjectURL *string   `json:"project_url"`
-	SessionRef *string   `json:"session_ref"`
-	Category   *string   `json:"category"`
-	EntryType  string    `json:"entry_type"`
-	Summary    string    `json:"summary"`
-	Approach   *string   `json:"approach"`
-	Outcome    *string   `json:"outcome"`
-	Issue      *string   `json:"issue"`
-	Learning   *string   `json:"learning"`
-	NextSteps  *string   `json:"next_steps"`
-	Assistant  string    `json:"assistant"`
-	Tags       []string  `json:"tags"`
-	OccurredAt time.Time `json:"occurred_at"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID             string    `json:"id"`
+	Theme          string    `json:"theme"`
+	Section        string    `json:"section"`
+	ProjectURL     *string   `json:"project_url"`
+	SessionRef     *string   `json:"session_ref"`
+	AgentSessionID *string   `json:"agent_session_id"`
+	Category       *string   `json:"category"`
+	EntryType      string    `json:"entry_type"`
+	Summary        string    `json:"summary"`
+	Approach       *string   `json:"approach"`
+	Outcome        *string   `json:"outcome"`
+	Issue          *string   `json:"issue"`
+	Learning       *string   `json:"learning"`
+	NextSteps      *string   `json:"next_steps"`
+	Assistant      string    `json:"assistant"`
+	Tags           []string  `json:"tags"`
+	OccurredAt     time.Time `json:"occurred_at"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 func (e *Entry) NormalizeTimes() {
@@ -52,20 +53,21 @@ func (e *Entry) NormalizeTimes() {
 }
 
 type LogInput struct {
-	Summary    string   `json:"summary"`
-	Assistant  string   `json:"assistant"`
-	Section    string   `json:"section"`
-	ProjectURL *string  `json:"project_url,omitempty"`
-	SessionRef *string  `json:"session_ref,omitempty"`
-	Category   *string  `json:"category,omitempty"`
-	EntryType  string   `json:"entry_type,omitempty"`
-	Approach   *string  `json:"approach,omitempty"`
-	Outcome    *string  `json:"outcome,omitempty"`
-	Issue      *string  `json:"issue,omitempty"`
-	Learning   *string  `json:"learning,omitempty"`
-	NextSteps  *string  `json:"next_steps,omitempty"`
-	Tags       []string `json:"tags,omitempty"`
-	OccurredAt string   `json:"occurred_at,omitempty"`
+	Summary        string   `json:"summary"`
+	Assistant      string   `json:"assistant"`
+	Section        string   `json:"section"`
+	ProjectURL     *string  `json:"project_url,omitempty"`
+	SessionRef     *string  `json:"session_ref,omitempty"`
+	AgentSessionID *string  `json:"agent_session_id,omitempty"`
+	Category       *string  `json:"category,omitempty"`
+	EntryType      string   `json:"entry_type,omitempty"`
+	Approach       *string  `json:"approach,omitempty"`
+	Outcome        *string  `json:"outcome,omitempty"`
+	Issue          *string  `json:"issue,omitempty"`
+	Learning       *string  `json:"learning,omitempty"`
+	NextSteps      *string  `json:"next_steps,omitempty"`
+	Tags           []string `json:"tags,omitempty"`
+	OccurredAt     string   `json:"occurred_at,omitempty"`
 }
 type SearchInput struct {
 	Query      string  `json:"query,omitempty"`
@@ -260,6 +262,15 @@ func sessionRef(v *string) error {
 	}
 	return nil
 }
+
+var agentSessionIDRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
+
+func agentSessionID(v *string) error {
+	if v != nil && !agentSessionIDRE.MatchString(*v) {
+		return fmt.Errorf("%w: invalid agent_session_id", ErrInvalid)
+	}
+	return nil
+}
 func tags(v *[]string) error {
 	if len(*v) > 20 {
 		return fmt.Errorf("%w: at most 20 tags", ErrInvalid)
@@ -367,7 +378,7 @@ func (r *Request) Validate() error {
 		if !assistantRE.MatchString(v.Assistant) {
 			return fmt.Errorf("%w: invalid assistant", ErrInvalid)
 		}
-		checks = append(checks, text(&v.Summary, true), section(&v.Section), category(v.Category), entryType(&v.EntryType), project(v.ProjectURL), sessionRef(v.SessionRef), stamp(v.OccurredAt), tags(&v.Tags))
+		checks = append(checks, text(&v.Summary, true), section(&v.Section), category(v.Category), entryType(&v.EntryType), project(v.ProjectURL), sessionRef(v.SessionRef), agentSessionID(v.AgentSessionID), stamp(v.OccurredAt), tags(&v.Tags))
 		for _, p := range []*string{v.Approach, v.Outcome, v.Issue, v.Learning, v.NextSteps} {
 			checks = append(checks, text(p, false))
 		}

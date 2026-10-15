@@ -24,11 +24,12 @@ func (s *contextStore) Execute(_ context.Context, owner string, request memory.R
 func TestCompactContextBoundsAndOwner(t *testing.T) {
 	long := strings.Repeat("useful detail ", 90)
 	ref := "codex-0123456789abcdef"
+	agentID := "01a13b57-f08a-77a1-a18f-5daaf9d50ec4"
 	store := &contextStore{}
 	for i := 0; i < 4; i++ {
 		store.entries = append(store.entries, memory.Entry{
 			ID: "id", OccurredAt: time.Date(2026, 10, 6, 0, 0, 0, 0, time.UTC),
-			Summary: long, Approach: &long, Outcome: &long, Issue: &long, Learning: &long, NextSteps: &long, SessionRef: &ref,
+			Summary: long, Approach: &long, Outcome: &long, Issue: &long, Learning: &long, NextSteps: &long, SessionRef: &ref, AgentSessionID: &agentID,
 		})
 	}
 	project := "https://github.com/Owner/Repo"
@@ -44,6 +45,9 @@ func TestCompactContextBoundsAndOwner(t *testing.T) {
 	}
 	if store.request.Search.SessionRef == nil || *store.request.Search.SessionRef != ref || out.Notes[0].SessionRef == nil || *out.Notes[0].SessionRef != ref {
 		t.Fatal("session reference lost")
+	}
+	if out.Notes[0].AgentSessionID == nil || *out.Notes[0].AgentSessionID != agentID {
+		t.Fatal("resumable agent session ID lost")
 	}
 	if len(out.Notes) != 3 || !out.HasMore || out.Source != "text" {
 		t.Fatalf("bad context page: %+v", out)

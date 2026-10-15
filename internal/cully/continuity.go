@@ -50,9 +50,26 @@ func continuitySessionRef(agent string, in continuityHookInput) string {
 	return fmt.Sprintf("%s-%x", agent, sum[:8])
 }
 
+var nativeSessionIDRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
+
+func continuityNativeSessionID(agent string, in continuityHookInput) string {
+	id := in.SessionID
+	if id == "" && agent == "cursor" {
+		id = in.ConversationID
+	}
+	if !nativeSessionIDRE.MatchString(id) {
+		return ""
+	}
+	return id
+}
+
 func continuityPrompt(base, agent string, in continuityHookInput) string {
 	if ref := continuitySessionRef(agent, in); ref != "" {
-		return base + " For this session, set cully_log.session_ref to " + ref + "; this opaque reference groups notes from the same agent session."
+		prompt := base + " For this session, set cully_log.session_ref to " + ref
+		if id := continuityNativeSessionID(agent, in); id != "" {
+			prompt += " and cully_log.agent_session_id to " + id + ". The native ID lets the user resume this coding-agent session"
+		}
+		return prompt + ". The opaque reference groups its notes."
 	}
 	return base
 }
