@@ -22,17 +22,18 @@ type ContextInput struct {
 }
 
 type ContextNote struct {
-	ID         string  `json:"id"`
-	Date       string  `json:"date"`
-	EntryType  string  `json:"entry_type"`
-	Assistant  string  `json:"assistant"`
-	SessionRef *string `json:"session_ref,omitempty"`
-	Summary    string  `json:"summary"`
-	Approach   string  `json:"approach,omitempty"`
-	Outcome    string  `json:"outcome,omitempty"`
-	Issue      string  `json:"issue,omitempty"`
-	Learning   string  `json:"learning,omitempty"`
-	NextSteps  string  `json:"next_steps,omitempty"`
+	ID             string  `json:"id"`
+	Date           string  `json:"date"`
+	EntryType      string  `json:"entry_type"`
+	Assistant      string  `json:"assistant"`
+	SessionRef     *string `json:"session_ref,omitempty"`
+	AgentSessionID *string `json:"agent_session_id,omitempty"`
+	Summary        string  `json:"summary"`
+	Approach       string  `json:"approach,omitempty"`
+	Outcome        string  `json:"outcome,omitempty"`
+	Issue          string  `json:"issue,omitempty"`
+	Learning       string  `json:"learning,omitempty"`
+	NextSteps      string  `json:"next_steps,omitempty"`
 }
 
 type ContextResult struct {
@@ -84,7 +85,7 @@ func compactContext(ctx context.Context, service memory.Service, owner string, i
 		}
 		out.Notes = append(out.Notes, ContextNote{
 			ID: entry.ID, Date: entry.OccurredAt.Format(time.DateOnly), EntryType: entry.EntryType,
-			Assistant: entry.Assistant, SessionRef: entry.SessionRef, Summary: preview(entry.Summary, 180),
+			Assistant: entry.Assistant, SessionRef: entry.SessionRef, AgentSessionID: entry.AgentSessionID, Summary: preview(entry.Summary, 180),
 			Approach: previewPtr(entry.Approach, 120), Outcome: previewPtr(entry.Outcome, 120),
 			Issue: previewPtr(entry.Issue, 120), Learning: previewPtr(entry.Learning, 120),
 			NextSteps: previewPtr(entry.NextSteps, 120),

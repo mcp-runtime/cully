@@ -57,9 +57,9 @@ func TestApplyUpgradesSourceOnlySchema(t *testing.T) {
 		t.Fatal("migration is not idempotent:", err)
 	}
 	var summary string
-	var ref *string
-	if err = pool.QueryRow(ctx, "SELECT summary,session_ref FROM cully_entries WHERE id=$1::uuid", id).Scan(&summary, &ref); err != nil || summary != "old note" || ref != nil {
-		t.Fatalf("old record lost: summary=%q ref=%v err=%v", summary, ref, err)
+	var ref, agentID *string
+	if err = pool.QueryRow(ctx, "SELECT summary,session_ref,agent_session_id FROM cully_entries WHERE id=$1::uuid", id).Scan(&summary, &ref, &agentID); err != nil || summary != "old note" || ref != nil || agentID != nil {
+		t.Fatalf("old record lost: summary=%q ref=%v agentID=%v err=%v", summary, ref, agentID, err)
 	}
 	var version5, versionRequired, validated bool
 	if err = pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM cully_schema_versions WHERE version=5)").Scan(&version5); err != nil || !version5 {

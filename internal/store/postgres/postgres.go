@@ -88,7 +88,7 @@ func (s *Store) execute(ctx context.Context, tx pgx.Tx, owner string, r memory.R
 		if v.OccurredAt != "" {
 			when, _ = time.Parse(time.RFC3339, v.OccurredAt)
 		}
-		e, err := one(ctx, tx, `INSERT INTO cully_entries AS e (id,owner_subject,section,project_url,session_ref,category,entry_type,summary,approach,outcome,issue,learning,next_steps,assistant,tags,occurred_at) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING `+record, uuid.NewString(), owner, v.Section, v.ProjectURL, v.SessionRef, v.Category, v.EntryType, v.Summary, v.Approach, v.Outcome, v.Issue, v.Learning, v.NextSteps, v.Assistant, v.Tags, when)
+		e, err := one(ctx, tx, `INSERT INTO cully_entries AS e (id,owner_subject,section,project_url,session_ref,agent_session_id,category,entry_type,summary,approach,outcome,issue,learning,next_steps,assistant,tags,occurred_at) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING `+record, uuid.NewString(), owner, v.Section, v.ProjectURL, v.SessionRef, v.AgentSessionID, v.Category, v.EntryType, v.Summary, v.Approach, v.Outcome, v.Issue, v.Learning, v.NextSteps, v.Assistant, v.Tags, when)
 		out.Entry = e
 		return out, err
 	case "session":

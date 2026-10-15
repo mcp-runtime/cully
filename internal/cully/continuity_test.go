@@ -29,12 +29,12 @@ func TestContinuityHookStartAndStop(t *testing.T) {
 		start := hookOutput(t, agent, "start", `{"session_id":"native-session-a"}`)
 		specific := start["hookSpecificOutput"].(map[string]any)
 		ref := continuitySessionRef(agent, continuityHookInput{SessionID: "native-session-a"})
-		if specific["hookEventName"] != "SessionStart" || !strings.Contains(specific["additionalContext"].(string), "cully_context") || !strings.Contains(specific["additionalContext"].(string), ref) || strings.Contains(specific["additionalContext"].(string), "native-session-a") {
+		if specific["hookEventName"] != "SessionStart" || !strings.Contains(specific["additionalContext"].(string), "cully_context") || !strings.Contains(specific["additionalContext"].(string), ref) || !strings.Contains(specific["additionalContext"].(string), "cully_log.agent_session_id to native-session-a") {
 			t.Fatalf("%s start: %#v", agent, start)
 		}
 		stop := hookOutput(t, agent, "stop", `{"session_id":"native-session-a","last_assistant_message":"I fixed the project configuration, tested the setup and documented the remaining issue for the next session."}`)
 		if agent == "claude" {
-			if stop["decision"] != "block" || !strings.Contains(stop["reason"].(string), "cully_log") || !strings.Contains(stop["reason"].(string), ref) {
+			if stop["decision"] != "block" || !strings.Contains(stop["reason"].(string), "cully_log") || !strings.Contains(stop["reason"].(string), ref) || !strings.Contains(stop["reason"].(string), "native-session-a") {
 				t.Fatalf("%s stop: %#v", agent, stop)
 			}
 		} else if stop != nil {
@@ -47,8 +47,11 @@ func TestContinuityHookStartAndStop(t *testing.T) {
 			t.Fatalf("%s trivial response: %#v", agent, got)
 		}
 	}
-	if got := hookOutput(t, "cursor", "start", `{"session_id":"cursor-session-a"}`); !strings.Contains(got["additional_context"].(string), "cully_context") || !strings.Contains(got["additional_context"].(string), "cursor-") {
+	if got := hookOutput(t, "cursor", "start", `{"session_id":"cursor-session-a"}`); !strings.Contains(got["additional_context"].(string), "cully_context") || !strings.Contains(got["additional_context"].(string), "cursor-") || !strings.Contains(got["additional_context"].(string), "cully_log.agent_session_id to cursor-session-a") {
 		t.Fatalf("Cursor start: %#v", got)
+	}
+	if got := hookOutput(t, "codex", "start", `{"session_id":"bad\ncontext"}`); strings.Contains(got["hookSpecificOutput"].(map[string]any)["additionalContext"].(string), "bad") {
+		t.Fatalf("untrusted session ID reached prompt: %#v", got)
 	}
 }
 
